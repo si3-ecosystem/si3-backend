@@ -5,10 +5,12 @@ import express from "express";
 
 import AppError from "./utils/AppError.js";
 
-import errorController from "./controller/errorController.js";
+import errorController from "./controllers/errorController.js";
 
 import allowedOrigins from "./allowedOrigins.js";
 import { mainMiddleware } from "./middleware/mainMiddleware.js";
+
+import mailRoutes from "./routes/mailRoutes.js";
 
 // Load environment variables
 dotenv.config({ path: "./.env" });
@@ -61,6 +63,10 @@ async function startWorker(id) {
     process.exit();
   });
 
+  // All Server Routes
+  app.use("/api/mail", mailRoutes);
+
+  // Error Routes
   app.all("*", (req, res, next) => {
     next(new AppError(`Can't find ${req.originalUrl} on this server.`, 404));
   });
