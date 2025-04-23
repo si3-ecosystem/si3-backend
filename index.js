@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 import throng from "throng";
 import express from "express";
-// import redis from "./utils/redis.js";
 
+// import redis from "./utils/redis.js";
 import AppError from "./utils/AppError.js";
 
 import errorController from "./controllers/errorController.js";
@@ -11,6 +11,7 @@ import allowedOrigins from "./allowedOrigins.js";
 import { mainMiddleware } from "./middleware/mainMiddleware.js";
 
 import mailRoutes from "./routes/mailRoutes.js";
+import connectDB from "./config/db.js";
 
 // Load environment variables
 dotenv.config({ path: "./.env" });
@@ -19,6 +20,13 @@ const workers = process.env.WEB_CONCURRENCY || 5;
 async function startWorker(id) {
   const PORT = process.env.PORT || 5000;
   const app = express();
+
+  try {
+    // await connectDB();
+  } catch (error) {
+    console.error("Failed to connect to database. Exiting...", error);
+    process.exit(1);
+  }
 
   if (process.env.NODE_ENV === "development") {
     allowedOrigins.push("http://localhost:3000", "http://localhost:8080");
