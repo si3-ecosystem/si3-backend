@@ -2,10 +2,16 @@ import AppError from "../utils/AppError.js";
 import catchAsync from "../utils/catchAsync.js";
 
 import { sendTransactionalEmail } from "../utils/sendEthermail.js";
-import { diversityTrackerEmailTemplate } from "../utils/emailTemplates.js";
+import {
+  diversityTrackerEmailTemplate,
+  guideEmailTemplate,
+  partnerProgramEmailTemplate,
+} from "../utils/emailTemplates.js";
 
 import PartnerProgramModel from "../models/partnerProgramModel.js";
 import DiversityTrackerModel from "../models/diversityTrackerModel.js";
+
+import Guide from "../models/guideModel.js";
 
 export const sendBasicEmail = catchAsync(async (req, res, next) => {
   const { toEmail, toName, subject, htmlContent } = req.body;
@@ -31,74 +37,12 @@ export const sendBasicEmail = catchAsync(async (req, res, next) => {
   });
 });
 
-// export const sendDiversityTrackerSubmissionEmail = catchAsync(
-//   async (req, res, next) => {
-//     const { toEmail, formData } = req.body;
-
-//     if (!toEmail || !formData) {
-//       return next(new AppError("Missing recipient email or form data", 400));
-//     }
-
-//     const htmlContent = diversityTrackerEmailTemplate(formData);
-
-//     const result = await sendTransactionalEmail({
-//       senderName: "SI<3>",
-//       senderEmail: "members@si3.space",
-//       toName: "Gautam",
-//       toEmail,
-//       subject: "New Diversity Tracker Submission",
-//       htmlContent,
-//       mergeData: {
-//         username: "Gautam",
-//         welcome_link: "https://si3.space/diversity-tracker",
-//       },
-//     });
-
-//     res.status(200).json({
-//       status: "success",
-//       message: "Diversity tracker submission email sent successfully",
-//       result,
-//     });
-//   }
-// );
-
-// export const sendPartnerProgramSubmissionEmail = catchAsync(
-//   async (req, res, next) => {
-//     const { toEmail, formData } = req.body;
-
-//     if (!toEmail || !formData) {
-//       return next(new AppError("Missing recipient email or form data", 400));
-//     }
-
-//     const htmlContent = partnerProgramEmailTemplate(formData);
-
-//     const result = await sendTransactionalEmail({
-//       senderName: "SI<3>",
-//       senderEmail: "members@si3.space",
-//       toName: "Kara!",
-//       toEmail,
-//       subject: "New Partner Program Submission",
-//       htmlContent,
-//       mergeData: {
-//         username: "Kara!",
-//         welcome_link: "https://si3.space/partner-program",
-//       },
-//     });
-
-//     res.status(200).json({
-//       status: "success",
-//       message: "Partner program submission email sent successfully",
-//       result,
-//     });
-//   }
-// );
-
 export const sendDiversityTrackerSubmissionEmail = catchAsync(
   async (req, res, next) => {
-    const { toEmail, formData } = req.body;
+    const { formData } = req.body;
 
-    if (!toEmail || !formData) {
-      return next(new AppError("Missing recipient email or form data", 400));
+    if (!formData) {
+      return next(new AppError("Missing form data", 400));
     }
 
     // 1. Save to MongoDB
@@ -111,12 +55,12 @@ export const sendDiversityTrackerSubmissionEmail = catchAsync(
     await sendTransactionalEmail({
       senderName: "SI<3>",
       senderEmail: "members@si3.space",
-      toName: "Gautam", //  Consider making this dynamic, if available
-      toEmail,
+      toName: "Kara",
+      toEmail: "kara@si3.space",
       subject: "New Diversity Tracker Submission",
       htmlContent,
       mergeData: {
-        username: "Gautam", // Consider making this dynamic
+        username: "Member",
         welcome_link: "https://si3.space/diversity-tracker",
       },
     });
@@ -128,12 +72,45 @@ export const sendDiversityTrackerSubmissionEmail = catchAsync(
   }
 );
 
+export const sendGuideSubmissionEmail = catchAsync(async (req, res, next) => {
+  const { formData } = req.body;
+
+  if (!formData || !formData.email || !formData.name) {
+    return next(new AppError("Missing form data or email or name", 400));
+  }
+
+  // 1. Save to MongoDB
+  await Guide.create(formData);
+
+  // 2. Generate HTML content
+  const htmlContent = guideEmailTemplate(formData);
+
+  // 3. Send the email
+  await sendTransactionalEmail({
+    senderName: "SI<3>",
+    senderEmail: "members@si3.space",
+    toName: "Kara",
+    toEmail: "kara@si3.space",
+    subject: "New Guide Submission",
+    htmlContent,
+    mergeData: {
+      username: formData.name,
+      welcome_link: "https://si3.space/guides",
+    },
+  });
+
+  res.status(200).json({
+    status: "success",
+    message: "Guide submission saved and email sent successfully",
+  });
+});
+
 export const sendPartnerProgramSubmissionEmail = catchAsync(
   async (req, res, next) => {
-    const { toEmail, formData } = req.body;
+    const { formData } = req.body;
 
-    if (!toEmail || !formData) {
-      return next(new AppError("Missing recipient email or form data", 400));
+    if (!formData || !formData.email || !formData.name) {
+      return next(new AppError("Missing form data or email or name", 400));
     }
 
     // 1. Save to MongoDB
@@ -146,12 +123,12 @@ export const sendPartnerProgramSubmissionEmail = catchAsync(
     await sendTransactionalEmail({
       senderName: "SI<3>",
       senderEmail: "members@si3.space",
-      toName: "Kara!",
-      toEmail,
+      toName: "Kara",
+      toEmail: "kara@si3.space",
       subject: "New Partner Program Submission",
       htmlContent,
       mergeData: {
-        username: "Kara!",
+        username: formData.name,
         welcome_link: "https://si3.space/partner-program",
       },
     });

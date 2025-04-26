@@ -1,12 +1,6 @@
 import { body } from "express-validator";
 
 const validateDiversityMail = [
-  body("toEmail")
-    .notEmpty()
-    .withMessage("Email is required")
-    .isEmail()
-    .withMessage("Email must be a valid email address"),
-
   body("formData").isObject().withMessage("formData must be an object"),
   body("formData.selfIdentity")
     .notEmpty()
@@ -101,7 +95,7 @@ const validateDiversityMail = [
 ];
 
 const validatePartnerSubmission = [
-  body("name")
+  body("formData.name")
     .notEmpty()
     .withMessage("Name is required")
     .isString()
@@ -111,14 +105,14 @@ const validatePartnerSubmission = [
     .isLength({ min: 2, max: 100 })
     .withMessage("Name must be between 2 and 100 characters"),
 
-  body("email")
+  body("formData.email")
     .notEmpty()
     .withMessage("Email is required")
     .isEmail()
     .withMessage("Email must be a valid email address")
     .normalizeEmail(),
 
-  body("companyName")
+  body("formData.companyName")
     .notEmpty()
     .withMessage("Company Name is required")
     .isString()
@@ -128,9 +122,17 @@ const validatePartnerSubmission = [
     .isLength({ min: 2, max: 200 })
     .withMessage("Company Name must be between 2 and 200 characters"),
 
-  body("interests").notEmpty().withMessage("Interests are required"),
+  body("formData.interests")
+    .custom((value) => {
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === "string") return value.trim().length > 0;
+      return false;
+    })
+    .withMessage(
+      "Interests are required and must be a non-empty string or array"
+    ),
 
-  body("details")
+  body("formData.details")
     .optional()
     .isString()
     .withMessage("Details must be a string")
@@ -139,11 +141,53 @@ const validatePartnerSubmission = [
     .isLength({ max: 1000 })
     .withMessage("Details must be at most 1000 characters"),
 
-  body("newsletter")
+  body("formData.newsletter")
     .notEmpty()
     .withMessage("Newsletter preference is required")
     .isBoolean()
     .withMessage("Newsletter must be a boolean value"),
 ];
 
-export { validateDiversityMail, validatePartnerSubmission };
+const validateGuideSubmission = [
+  body("formData").isObject().withMessage("formData must be an object"),
+  body("formData.name")
+    .notEmpty()
+    .withMessage("Name is required")
+    .isString()
+    .withMessage("Name must be a string")
+    .trim()
+    .escape()
+    .isLength({ min: 2, max: 100 }),
+  body("formData.email")
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Email must be a valid email address")
+    .normalizeEmail(),
+  body("formData.companyAffiliation")
+    .notEmpty()
+    .withMessage("Company Affiliation is required")
+    .isString()
+    .trim()
+    .escape()
+    .isLength({ min: 2, max: 200 }),
+  body("formData.interests")
+    .isArray({ min: 1 })
+    .withMessage("At least one interest is required"),
+  body("formData.personalValues")
+    .optional()
+    .isString()
+    .trim()
+    .escape()
+    .isLength({ max: 500 }),
+  body("formData.digitalLink")
+    .optional()
+    .isIn(["yes", "no"])
+    .withMessage("Digital Link must be 'yes' or 'no'"),
+];
+
+export {
+  validateDiversityMail,
+  validatePartnerSubmission,
+  validateGuideSubmission,
+};

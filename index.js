@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 import express from "express";
 import compression from "compression";
-import helmet from "helmet";
 
 import AppError from "./utils/AppError.js";
 import errorController from "./controllers/errorController.js";
@@ -21,12 +20,9 @@ try {
   process.exit(1);
 }
 
-app.use(helmet());
 app.use(compression());
-app.use(express.json({ limit: "10kb" }));
+app.use(express.json({ limit: "50kb" }));
 app.disable("x-powered-by");
-
-app.set("trust proxy", true);
 
 if (process.env.NODE_ENV === "development") {
   allowedOrigins.push("http://localhost:3000", "http://localhost:8080");

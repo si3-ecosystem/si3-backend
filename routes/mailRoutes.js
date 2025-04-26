@@ -3,12 +3,14 @@ import express from "express";
 import {
   sendBasicEmail,
   sendDiversityTrackerSubmissionEmail,
+  sendGuideSubmissionEmail,
   sendPartnerProgramSubmissionEmail,
 } from "../controllers/mailController.js";
 
 import {
   validateDiversityMail,
   validatePartnerSubmission,
+  validateGuideSubmission,
 } from "../middleware/validators/mailValidators.js";
 import validationMiddleware from "../middleware/validationMiddleware.js";
 
@@ -26,6 +28,13 @@ router.post(
   validateDiversityMail,
   validationMiddleware,
   sendDiversityTrackerSubmissionEmail
+);
+
+router.post(
+  "/guides",
+  validateGuideSubmission,
+  validationMiddleware,
+  sendGuideSubmissionEmail
 );
 
 export default router;

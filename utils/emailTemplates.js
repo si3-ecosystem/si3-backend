@@ -28,9 +28,14 @@ export const partnerProgramEmailTemplate = (data) => {
                 </tr>
                  <tr>
                     <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">Interests:</td>
-                    <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${data.interests.join(
-                      ", "
-                    )}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${(() => {
+                      const interestsArray = Array.isArray(data.interests)
+                        ? data.interests
+                        : typeof data.interests === "string"
+                          ? data.interests.split(",").map(s => s.trim()).filter(Boolean)
+                          : [];
+                      return interestsArray.join(", ");
+                    })()}</td>
                 </tr>
                 ${
                   data.details
@@ -55,6 +60,65 @@ export const partnerProgramEmailTemplate = (data) => {
                 <p style="font-size: 12px; color: #666;">&copy; ${new Date().getFullYear()} SI<3>. All rights reserved.</p>
             </div>
         </div>
+    </div>
+  `;
+};
+
+export const guideEmailTemplate = (data) => {
+  return `
+    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; background-color: #fff; border-radius: 8px;">
+      <div style="background-color: #fff; border-radius: 8px; border: 1px solid #eee;">
+        <div style="padding: 20px; border-radius: 8px;">
+          <h1 style="text-align: center; color: #F927E9; margin-bottom: 25px; border-bottom: 2px solid #C258FF; padding-bottom: 10px;">Guide Submission</h1>
+          <p style="text-align: center; font-size: 16px; color: #666; margin-bottom: 20px;">
+            Here are the details of the guide submission:
+          </p>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <tr>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">Name:</td>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${
+                data.name
+              }</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">Email:</td>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${
+                data.email
+              }</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">Company Affiliation:</td>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${
+                data.companyAffiliation
+              }</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">Interests:</td>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${
+                Array.isArray(data.interests)
+                  ? data.interests.join(", ")
+                  : data.interests
+              }</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">Personal Values:</td>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${
+                data.personalValues || "N/A"
+              }</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">Digital Link:</td>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${
+                data.digitalLink
+              }</td>
+            </tr>
+          </table>
+        </div>
+        <div style="text-align: center; margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee;">
+          <p style="color: #888;">Thank you for your submission. We will be in touch soon.</p>
+          <p style="font-size: 12px; color: #666;">&copy; ${new Date().getFullYear()} SI<3>. All rights reserved.</p>
+        </div>
+      </div>
     </div>
   `;
 };
