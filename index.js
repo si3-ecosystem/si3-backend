@@ -7,6 +7,7 @@ import errorController from "./controllers/errorController.js";
 import allowedOrigins from "./allowedOrigins.js";
 import { mainMiddleware } from "./middleware/mainMiddleware.js";
 import mailRoutes from "./routes/mailRoutes.js";
+import diversityTrackerRoutes from "./routes/diversityTrackerRoutes.js";
 import connectDB from "./config/db.js";
 
 dotenv.config({ path: "./.env" });
@@ -42,6 +43,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/mail", mailRoutes);
+app.use("/api/diversity-tracker", diversityTrackerRoutes);
 
 app.all("*", (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server.`, 404));
