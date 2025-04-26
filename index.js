@@ -22,7 +22,7 @@ async function startWorker(id) {
   const app = express();
 
   try {
-    // await connectDB();
+    await connectDB();
   } catch (error) {
     console.error("Failed to connect to database. Exiting...", error);
     process.exit(1);
