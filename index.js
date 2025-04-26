@@ -1,24 +1,32 @@
 import dotenv from "dotenv";
 import express from "express";
+import compression from "compression";
+import helmet from "helmet";
 
 import AppError from "./utils/AppError.js";
 import errorController from "./controllers/errorController.js";
 import allowedOrigins from "./allowedOrigins.js";
 import { mainMiddleware } from "./middleware/mainMiddleware.js";
 import mailRoutes from "./routes/mailRoutes.js";
-// import connectDB from "./config/db.js";
+import connectDB from "./config/db.js";
 
 dotenv.config({ path: "./.env" });
 
 const app = express();
 
-// Connect to database (if needed)
 try {
-  // await connectDB();
+  await connectDB();
 } catch (error) {
   console.error("Failed to connect to database. Exiting...", error);
   process.exit(1);
 }
+
+app.use(helmet());
+app.use(compression());
+app.use(express.json({ limit: "10kb" }));
+app.disable("x-powered-by");
+
+app.set("trust proxy", true);
 
 if (process.env.NODE_ENV === "development") {
   allowedOrigins.push("http://localhost:3000", "http://localhost:8080");
@@ -31,22 +39,18 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  return res.json({
+  res.json({
     success: true,
     message: "SI<3> Server is running",
   });
 });
 
-// Routes
 app.use("/api/mail", mailRoutes);
 
-// Catch-all for 404s
 app.all("*", (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server.`, 404));
 });
 
-// Error handling
 app.use(errorController);
 
-// ❗ THIS IS IMPORTANT FOR VERCEL
 export default app;
