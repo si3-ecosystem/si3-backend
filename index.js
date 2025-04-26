@@ -61,4 +61,4 @@ app.all("*", (req, res, next) => {
 app.use(errorController);
 
 // Export serverless handler for Vercel
-export const handler = serverless(app);
+export default serverless(app);
