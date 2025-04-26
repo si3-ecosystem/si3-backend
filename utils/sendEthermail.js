@@ -34,7 +34,6 @@ export const sendTransactionalEmail = async ({
     merge_data: mergeData,
   };
 
-  console.log("payload", payload);
   try {
     const response = await axios.post(ETHERMAIL_API_URL, payload, {
       headers: {
@@ -44,8 +43,6 @@ export const sendTransactionalEmail = async ({
       },
     });
 
-    console.log("response", response);
-
     return response.data;
   } catch (err) {
     console.error(
@@ -53,7 +50,6 @@ export const sendTransactionalEmail = async ({
       err.response?.data || err.message
     );
 
-    console.log("err", err);
     throw err;
   }
 };
