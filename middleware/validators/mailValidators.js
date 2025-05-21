@@ -157,33 +157,52 @@ const validateGuideSubmission = [
     .withMessage("Name must be a string")
     .trim()
     .escape()
-    .isLength({ min: 2, max: 100 }),
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Name must be between 1 and 100 characters"),
+
   body("formData.email")
     .notEmpty()
     .withMessage("Email is required")
     .isEmail()
     .withMessage("Email must be a valid email address")
     .normalizeEmail(),
-  body("formData.companyAffiliation")
+
+  body("formData.pronouns")
     .notEmpty()
-    .withMessage("Company Affiliation is required")
+    .withMessage("Pronouns are required")
     .isString()
+    .withMessage("Pronouns must be a string")
     .trim()
     .escape()
-    .isLength({ min: 2, max: 200 }),
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Pronouns must be between 1 and 100 characters"),
+
   body("formData.interests")
     .isArray({ min: 1 })
-    .withMessage("At least one interest is required"),
+    .withMessage("At least one interest is required")
+    .custom((interests) => {
+      return interests.every((interest) => typeof interest === "string");
+    })
+    .withMessage("Each interest must be a string"),
+
   body("formData.personalValues")
-    .optional()
+    .notEmpty()
+    .withMessage("Personal values are required")
     .isString()
+    .withMessage("Personal values must be a string")
     .trim()
     .escape()
-    .isLength({ max: 500 }),
+    .isLength({ min: 1, max: 2000 })
+    .withMessage("Personal values must be between 1 and 2000 characters"),
+
   body("formData.digitalLink")
-    .optional()
-    .isIn(["yes", "no"])
-    .withMessage("Digital Link must be 'yes' or 'no'"),
+    .notEmpty()
+    .withMessage("Digital link is required")
+    .isURL()
+    .withMessage("Digital link must be a valid URL")
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage("Digital link must be at most 500 characters"),
 ];
 
 export {
