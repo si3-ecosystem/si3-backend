@@ -4,10 +4,10 @@ const GuideSchema = new mongoose.Schema(
   {
     name: { type: String, trim: true, required: true },
     email: { type: String, trim: true, required: true },
-    companyAffiliation: { type: String, trim: true, required: true },
+    pronouns: { type: String, trim: true, required: true },
     interests: { type: [String], trim: true, required: true },
-    personalValues: { type: String, trim: true, default: "" },
-    digitalLink: { type: String, enum: ["yes", "no"], default: "no" },
+    personalValues: { type: String, trim: true, required: true },
+    digitalLink: { type: String, trim: true, required: true },
   },
   { timestamps: true }
 );
