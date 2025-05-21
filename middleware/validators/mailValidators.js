@@ -198,11 +198,9 @@ const validateGuideSubmission = [
   body("formData.digitalLink")
     .notEmpty()
     .withMessage("Digital link is required")
-    .isURL()
-    .withMessage("Digital link must be a valid URL")
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage("Digital link must be at most 500 characters"),
+    .isString()
+    .withMessage("Digital link must be a string")
+    .trim(),
 ];
 
 export {
