@@ -2,14 +2,24 @@ import { body } from "express-validator";
 
 const validateDiversityMail = [
   body("formData").isObject().withMessage("formData must be an object"),
+
+  // Personal Information
   body("formData.selfIdentity")
     .notEmpty()
     .withMessage("Self Identity is required")
     .isString()
     .withMessage("Self Identity must be a string")
     .trim()
-    .escape()
+    .isLength({ max: 100 })
     .withMessage("Self Identity must be at most 100 characters"),
+
+  body("formData.selfIdentityCustom")
+    .optional()
+    .isString()
+    .withMessage("Custom Identity must be a string")
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage("Custom Identity must be at most 100 characters"),
 
   body("formData.ageRange")
     .notEmpty()
@@ -17,26 +27,38 @@ const validateDiversityMail = [
     .isString()
     .withMessage("Age Range must be a string")
     .trim()
-    .escape()
+    .isLength({ max: 50 })
     .withMessage("Age Range must be at most 50 characters"),
 
   body("formData.ethnicity")
     .notEmpty()
     .withMessage("Ethnicity is required")
-    .isString()
-    .withMessage("Ethnicity must be a string")
-    .trim()
-    .escape()
-    .withMessage("Ethnicity must be at most 100 characters"),
+    .custom(value => {
+      // Accept both string and array
+      if (typeof value === 'string') {
+        return value.trim().length > 0;
+      }
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return false;
+    })
+    .withMessage("Ethnicity must be provided"),
 
   body("formData.disability")
     .notEmpty()
     .withMessage("Disability status is required")
-    .isString()
-    .withMessage("Disability status must be a string")
-    .trim()
-    .escape()
-    .withMessage("Disability must be at most 100 characters"),
+    .custom(value => {
+      // Accept both string and array
+      if (typeof value === 'string') {
+        return value.trim().length > 0;
+      }
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return false;
+    })
+    .withMessage("Disability status must be provided"),
 
   body("formData.sexualOrientation")
     .notEmpty()
@@ -44,7 +66,7 @@ const validateDiversityMail = [
     .isString()
     .withMessage("Sexual Orientation must be a string")
     .trim()
-    .escape()
+    .isLength({ max: 100 })
     .withMessage("Sexual Orientation must be at most 100 characters"),
 
   body("formData.equityScale")
@@ -53,20 +75,21 @@ const validateDiversityMail = [
     .isInt({ min: 1, max: 10 })
     .withMessage("Equity Scale must be an integer between 1 and 10"),
 
+  // Existing optional fields
   body("formData.improvementSuggestions")
     .optional()
     .isString()
     .withMessage("Improvement Suggestions must be a string")
     .trim()
-    .escape()
-    .withMessage("Improvement Suggestions must be at most 500 characters"),
+    .isLength({ max: 1000 })
+    .withMessage("Improvement Suggestions must be at most 1000 characters"),
 
   body("formData.grantProvider")
     .optional()
     .isString()
     .withMessage("Grant Provider must be a string")
     .trim()
-    .escape()
+    .isLength({ max: 200 })
     .withMessage("Grant Provider must be at most 200 characters"),
 
   body("formData.grantRound")
@@ -74,7 +97,7 @@ const validateDiversityMail = [
     .isString()
     .withMessage("Grant Round must be a string")
     .trim()
-    .escape()
+    .isLength({ max: 100 })
     .withMessage("Grant Round must be at most 100 characters"),
 
   body("formData.suggestions")
@@ -82,16 +105,191 @@ const validateDiversityMail = [
     .isString()
     .withMessage("Suggestions must be a string")
     .trim()
-    .escape()
-    .withMessage("Suggestions must be at most 500 characters"),
+    .isLength({ max: 1000 })
+    .withMessage("Suggestions must be at most 1000 characters"),
 
   body("formData.activeGrantsParticipated")
     .optional()
     .isString()
     .withMessage("Active Grants Participated must be a string")
     .trim()
-    .escape()
-    .withMessage("Active Grants Participated must be at most 500 characters"),
+    .isLength({ max: 100 })
+    .withMessage("Active Grants Participated must be at most 100 characters"),
+
+  // New Accessibility fields
+  body("formData.offeringClear")
+    .notEmpty()
+    .withMessage("Clarity of organization's offering is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        // Convert first letter to uppercase, rest to lowercase
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No", "Somewhat"])
+    .withMessage("Invalid selection for organization's offering clarity"),
+
+  body("formData.claritySuggestions")
+    .optional()
+    .isString()
+    .withMessage("Clarity suggestions must be a string")
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Clarity suggestions must be at most 1000 characters"),
+
+  body("formData.engagementChannels")
+    .custom(value => {
+      // Handle both string and array inputs
+      if (typeof value === 'string') {
+        return value.trim().length > 0;
+      }
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+      return false;
+    })
+    .withMessage("At least one engagement channel must be selected")
+    .customSanitizer(value => {
+      // Convert string to array if needed
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return [value];
+      }
+      return value;
+    }),
+
+  // New Transparency fields
+  body("formData.decentralizedDecisionMaking")
+    .notEmpty()
+    .withMessage("Decentralized decision making status is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No", "Unsure"])
+    .withMessage("Invalid selection for decentralized decision making"),
+
+  body("formData.hasRoadmap")
+    .notEmpty()
+    .withMessage("Roadmap status is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No", "Unsure"])
+    .withMessage("Invalid selection for roadmap status"),
+
+  body("formData.reportsFinancials")
+    .notEmpty()
+    .withMessage("Financial reporting status is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No", "Unsure"])
+    .withMessage("Invalid selection for financial reporting status"),
+
+  body("formData.runsGrantPrograms")
+    .notEmpty()
+    .withMessage("Grant programs status is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No"])
+    .withMessage("Invalid selection for grant programs status"),
+
+  body("formData.grantRoundParticipation")
+    .optional()
+    .isString()
+    .withMessage("Grant round participation must be a string")
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage("Grant round participation must be at most 500 characters"),
+
+  body("formData.grantExperience")
+    .optional()
+    .isString()
+    .withMessage("Grant experience must be a string")
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Grant experience must be at most 1000 characters"),
+
+  // New Inclusivity fields
+  body("formData.diversityInitiatives")
+    .notEmpty()
+    .withMessage("Diversity initiatives status is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No", "Unsure"])
+    .withMessage("Invalid selection for diversity initiatives"),
+
+  body("formData.diverseTeam")
+    .notEmpty()
+    .withMessage("Diverse team status is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No", "Unsure"])
+    .withMessage("Invalid selection for diverse team"),
+
+  body("formData.underrepresentedLeadership")
+    .notEmpty()
+    .withMessage("Underrepresented leadership status is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No", "Unsure"])
+    .withMessage("Invalid selection for underrepresented leadership"),
+
+  body("formData.highlightsUnderrepresented")
+    .notEmpty()
+    .withMessage("Highlights underrepresented status is required")
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(["Yes", "No", "Unsure"])
+    .withMessage("Invalid selection for highlights underrepresented"),
+
+  // New Impact fields
+  body("formData.uniqueValue")
+    .notEmpty()
+    .withMessage("Unique value is required")
+    .isString()
+    .withMessage("Unique value must be a string")
+    .trim()
+    .isLength({ min: 10, max: 1000 })
+    .withMessage("Unique value must be between 10 and 1000 characters"),
+
+  body("formData.marketImpact")
+    .notEmpty()
+    .withMessage("Market impact is required")
+    .isString()
+    .withMessage("Market impact must be a string")
+    .trim()
+    .isLength({ min: 10, max: 1000 })
+    .withMessage("Market impact must be between 10 and 1000 characters"),
 ];
 
 const validatePartnerSubmission = [

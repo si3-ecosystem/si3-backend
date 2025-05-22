@@ -45,10 +45,8 @@ export const sendDiversityTrackerSubmissionEmail = catchAsync(
       return next(new AppError("Missing form data", 400));
     }
 
-    // 1. Save to MongoDB
     await DiversityTrackerModel.create(formData);
 
-    // 2. Generate HTML content (after saving to DB)
     const htmlContent = diversityTrackerEmailTemplate(formData);
 
     // 3. Send the email
