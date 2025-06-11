@@ -90,9 +90,9 @@ export const guideEmailTemplate = (data) => {
               }</td>
             </tr>
             <tr>
-              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">Pronouns:</td>
+              <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #fff; font-weight: bold; color: #C258FF;">DAO Interests:</td>
               <td style="padding: 12px; border-bottom: 1px solid #eee; background-color: #f8f8f8;">${
-                data.pronouns || "N/A"
+                data.daoInterests || "N/A"
               }</td>
             </tr>
             <tr>

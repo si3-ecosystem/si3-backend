@@ -33,9 +33,9 @@ const validateDiversityMail = [
   body("formData.ethnicity")
     .notEmpty()
     .withMessage("Ethnicity is required")
-    .custom(value => {
+    .custom((value) => {
       // Accept both string and array
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         return value.trim().length > 0;
       }
       if (Array.isArray(value)) {
@@ -48,9 +48,9 @@ const validateDiversityMail = [
   body("formData.disability")
     .notEmpty()
     .withMessage("Disability status is required")
-    .custom(value => {
+    .custom((value) => {
       // Accept both string and array
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         return value.trim().length > 0;
       }
       if (Array.isArray(value)) {
@@ -120,8 +120,8 @@ const validateDiversityMail = [
   body("formData.offeringClear")
     .notEmpty()
     .withMessage("Clarity of organization's offering is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         // Convert first letter to uppercase, rest to lowercase
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
@@ -139,9 +139,9 @@ const validateDiversityMail = [
     .withMessage("Clarity suggestions must be at most 1000 characters"),
 
   body("formData.engagementChannels")
-    .custom(value => {
+    .custom((value) => {
       // Handle both string and array inputs
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         return value.trim().length > 0;
       }
       if (Array.isArray(value)) {
@@ -150,9 +150,9 @@ const validateDiversityMail = [
       return false;
     })
     .withMessage("At least one engagement channel must be selected")
-    .customSanitizer(value => {
+    .customSanitizer((value) => {
       // Convert string to array if needed
-      if (typeof value === 'string' && value.trim().length > 0) {
+      if (typeof value === "string" && value.trim().length > 0) {
         return [value];
       }
       return value;
@@ -162,8 +162,8 @@ const validateDiversityMail = [
   body("formData.decentralizedDecisionMaking")
     .notEmpty()
     .withMessage("Decentralized decision making status is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -174,8 +174,8 @@ const validateDiversityMail = [
   body("formData.hasRoadmap")
     .notEmpty()
     .withMessage("Roadmap status is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -186,8 +186,8 @@ const validateDiversityMail = [
   body("formData.reportsFinancials")
     .notEmpty()
     .withMessage("Financial reporting status is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -198,8 +198,8 @@ const validateDiversityMail = [
   body("formData.runsGrantPrograms")
     .notEmpty()
     .withMessage("Grant programs status is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -227,8 +227,8 @@ const validateDiversityMail = [
   body("formData.diversityInitiatives")
     .notEmpty()
     .withMessage("Diversity initiatives status is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -239,8 +239,8 @@ const validateDiversityMail = [
   body("formData.diverseTeam")
     .notEmpty()
     .withMessage("Diverse team status is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -251,8 +251,8 @@ const validateDiversityMail = [
   body("formData.underrepresentedLeadership")
     .notEmpty()
     .withMessage("Underrepresented leadership status is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -263,8 +263,8 @@ const validateDiversityMail = [
   body("formData.highlightsUnderrepresented")
     .notEmpty()
     .withMessage("Highlights underrepresented status is required")
-    .customSanitizer(value => {
-      if (typeof value === 'string') {
+    .customSanitizer((value) => {
+      if (typeof value === "string") {
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -365,15 +365,15 @@ const validateGuideSubmission = [
     .withMessage("Email must be a valid email address")
     .normalizeEmail(),
 
-  body("formData.pronouns")
+  body("formData.daoInterests")
     .notEmpty()
-    .withMessage("Pronouns are required")
+    .withMessage("daoInterests are required")
     .isString()
-    .withMessage("Pronouns must be a string")
+    .withMessage("daoInterests must be a string")
     .trim()
     .escape()
     .isLength({ min: 1, max: 100 })
-    .withMessage("Pronouns must be between 1 and 100 characters"),
+    .withMessage("daoInterests must be between 1 and 100 characters"),
 
   body("formData.interests")
     .isArray({ min: 1 })
