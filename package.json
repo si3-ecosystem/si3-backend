@@ -9,8 +9,10 @@
   "description": "",
   "dependencies": {
     "axios": "^1.8.4",
+    "bcryptjs": "^3.0.2",
     "bull": "^4.16.5",
     "compression": "^1.8.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "ethers": "^5.7.2",

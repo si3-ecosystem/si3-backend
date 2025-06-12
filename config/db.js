@@ -19,6 +19,7 @@ const connectDB = async () => {
     }
 
     const mongoURI = process.env.MONGO_URI;
+
     if (!mongoURI) {
       const errorMessage = "MONGO_URI not defined in environment variables";
       console.error(errorMessage);
@@ -29,8 +30,6 @@ const connectDB = async () => {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
     });
 
     await cachedConnection;

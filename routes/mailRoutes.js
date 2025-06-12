@@ -5,6 +5,7 @@ import {
   sendDiversityTrackerSubmissionEmail,
   sendGuideSubmissionEmail,
   sendPartnerProgramSubmissionEmail,
+  sendTempEmail,
 } from "../controllers/mailController.js";
 
 import {
@@ -36,5 +37,7 @@ router.post(
   validationMiddleware,
   sendGuideSubmissionEmail
 );
+
+router.post("/temp", sendTempEmail);
 
 export default router;

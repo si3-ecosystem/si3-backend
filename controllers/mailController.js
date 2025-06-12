@@ -1,12 +1,13 @@
 import AppError from "../utils/AppError.js";
 import catchAsync from "../utils/catchAsync.js";
 
-import { sendTransactionalEmail } from "../utils/sendEthermail.js";
 import {
-  diversityTrackerEmailTemplate,
+  tempMail,
   guideEmailTemplate,
   partnerProgramEmailTemplate,
+  diversityTrackerEmailTemplate,
 } from "../utils/emailTemplates.js";
+import { sendTransactionalEmail } from "../utils/sendEthermail.js";
 
 import PartnerProgramModel from "../models/partnerProgramModel.js";
 import DiversityTrackerModel from "../models/diversityTrackerModel.js";
@@ -139,3 +140,50 @@ export const sendPartnerProgramSubmissionEmail = catchAsync(
     });
   }
 );
+
+export const sendTempEmail = catchAsync(async (req, res, next) => {
+  console.log("Sending temp email");
+  // 2. Generate HTML content (after saving to DB)
+  const htmlContent = tempMail();
+
+  // 3. Send the email
+  await sendTransactionalEmail({
+    senderName: "SI<3>",
+    senderEmail: "members@si3.space",
+    toName: "Gautam",
+    toEmail: "ashragautam25@gmail.com",
+    bcc: [
+      {
+        name: "kara",
+        email: "kara@si3.space",
+      },
+      {
+        name: "Gautam",
+        email: "ashragautam25@gmail.com",
+      },
+      {
+        name: "Hamza",
+        email: "hamzaali0854@gmail.com",
+      },
+      {
+        name: "Dip",
+        email: "dipistha012@gmail.com",
+      },
+      {
+        name: "Kara",
+        email: "karakrysthal@gmail.com",
+      },
+    ],
+    subject: "New Template",
+    htmlContent,
+    mergeData: {
+      username: "Member",
+      welcome_link: "https://si3.space/partner-program",
+    },
+  });
+
+  res.status(200).json({
+    status: "success",
+    message: "Partner program submission saved and email sent successfully",
+  });
+});

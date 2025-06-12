@@ -10,14 +10,16 @@ export const sendTransactionalEmail = async ({
   toEmail,
   subject,
   htmlContent,
+  cc,
+  bcc,
   mergeData = {},
 }) => {
   if (
     !senderName ||
     !senderEmail ||
     !toName ||
-    !toEmail ||
     !subject ||
+    !toEmail ||
     !htmlContent ||
     !mergeData
   ) {
@@ -29,6 +31,8 @@ export const sendTransactionalEmail = async ({
     sender_email: senderEmail,
     to_name: toName,
     to_email: toEmail,
+    cc: cc,
+    bcc: bcc,
     subject,
     html: htmlContent,
     merge_data: mergeData,
