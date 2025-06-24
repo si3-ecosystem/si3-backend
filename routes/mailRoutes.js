@@ -5,6 +5,7 @@ import {
   sendDiversityTrackerSubmissionEmail,
   sendGuideSubmissionEmail,
   sendPartnerProgramSubmissionEmail,
+  sendScholarsProgramSubmissionEmail,
   sendTempEmail,
 } from "../controllers/mailController.js";
 
@@ -12,6 +13,7 @@ import {
   validateDiversityMail,
   validatePartnerSubmission,
   validateGuideSubmission,
+  validateScholarsProgramSubmission,
 } from "../middleware/validators/mailValidators.js";
 import validationMiddleware from "../middleware/validationMiddleware.js";
 
@@ -36,6 +38,13 @@ router.post(
   validateGuideSubmission,
   validationMiddleware,
   sendGuideSubmissionEmail
+);
+
+router.post(
+  "/scholars-program",
+  validateScholarsProgramSubmission,
+  validationMiddleware,
+  sendScholarsProgramSubmissionEmail
 );
 
 router.post("/temp", sendTempEmail);
