@@ -313,7 +313,9 @@ export const validateScholarsProgramSubmission = [
     .toLowerCase(),
 
   body("formData.interests")
-    .optional(),
+    .isArray({ min: 1 })
+    .withMessage("At least one interest is required"),
+
   body("formData.details")
     .optional()
     .isString()

@@ -87,18 +87,18 @@ export const sendGuideSubmissionEmail = catchAsync(async (req, res, next) => {
   const htmlContent = guideEmailTemplate(formData);
 
   // 3. Send the email
-  await sendTransactionalEmail({
-    senderName: "SI<3>",
-    senderEmail: "members@si3.space",
-    toName: "Kara",
-    toEmail: "kara@si3.space",
-    subject: "New Guide Submission",
-    htmlContent,
-    mergeData: {
-      username: formData.name,
-      welcome_link: "https://si3.space/guides",
-    },
-  });
+  // await sendTransactionalEmail({
+  //   senderName: "SI<3>",
+  //   senderEmail: "members@si3.space",
+  //   toName: "Kara",
+  //   toEmail: "kara@si3.space",
+  //   subject: "New Guide Submission",
+  //   htmlContent,
+  //   mergeData: {
+  //     username: formData.name,
+  //     welcome_link: "https://si3.space/guides",
+  //   },
+  // });
 
   res.status(200).json({
     status: "success",
