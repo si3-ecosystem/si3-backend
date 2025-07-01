@@ -53,18 +53,18 @@ export const sendDiversityTrackerSubmissionEmail = catchAsync(
     const htmlContent = diversityTrackerEmailTemplate(formData);
 
     // 3. Send the email
-    await sendTransactionalEmail({
-      senderName: "SI<3>",
-      senderEmail: "members@si3.space",
-      toName: "Kara",
-      toEmail: "kara@si3.space",
-      subject: "New Diversity Tracker Submission",
-      htmlContent,
-      mergeData: {
-        username: "Member",
-        welcome_link: "https://si3.space/diversity-tracker",
-      },
-    });
+    // await sendTransactionalEmail({
+    //   senderName: "SI<3>",
+    //   senderEmail: "members@si3.space",
+    //   toName: "Kara",
+    //   toEmail: "kara@si3.space",
+    //   subject: "New Diversity Tracker Submission",
+    //   htmlContent,
+    //   mergeData: {
+    //     username: "Member",
+    //     welcome_link: "https://si3.space/diversity-tracker",
+    //   },
+    // });
 
     res.status(200).json({
       status: "success",
@@ -121,18 +121,18 @@ export const sendPartnerProgramSubmissionEmail = catchAsync(
     const htmlContent = partnerProgramEmailTemplate(formData);
 
     // 3. Send the email
-    await sendTransactionalEmail({
-      senderName: "SI<3>",
-      senderEmail: "members@si3.space",
-      toName: "Kara",
-      toEmail: "kara@si3.space",
-      subject: "New Partner Program Submission",
-      htmlContent,
-      mergeData: {
-        username: formData.name,
-        welcome_link: "https://si3.space/partner-program",
-      },
-    });
+    // await sendTransactionalEmail({
+    //   senderName: "SI<3>",
+    //   senderEmail: "members@si3.space",
+    //   toName: "Kara",
+    //   toEmail: "kara@si3.space",
+    //   subject: "New Partner Program Submission",
+    //   htmlContent,
+    //   mergeData: {
+    //     username: formData.name,
+    //     welcome_link: "https://si3.space/partner-program",
+    //   },
+    // });
 
     res.status(200).json({
       status: "success",
@@ -163,15 +163,15 @@ export const sendScholarsProgramSubmissionEmail = catchAsync(
     // Send email notification
     const emailHtml = scholarsProgramEmailTemplate(scholarData);
 
-    await sendTransactionalEmail({
-      senderName: "SI<3>",
-      senderEmail: "members@si3.space",
-      toName: "SI<3> Team",
-      toEmail: "members@si3.space",
-      subject: `New Scholars Program Application: ${formData.name}`,
-      htmlContent: emailHtml,
-      mergeData: {},
-    });
+    // await sendTransactionalEmail({
+    //   senderName: "SI<3>",
+    //   senderEmail: "members@si3.space",
+    //   toName: "SI<3> Team",
+    //   toEmail: "members@si3.space",
+    //   subject: `New Scholars Program Application: ${formData.name}`,
+    //   htmlContent: emailHtml,
+    //   mergeData: {},
+    // });
 
     // Send confirmation email to the applicant
     const confirmationHtml = `
@@ -188,15 +188,15 @@ export const sendScholarsProgramSubmissionEmail = catchAsync(
       </div>
     `;
 
-    await sendTransactionalEmail({
-      senderName: "SI<3> Scholars Program",
-      senderEmail: "scholars@si3.space",
-      toName: formData.name,
-      toEmail: formData.email,
-      subject: "Your Scholars Program Application Has Been Received",
-      htmlContent: confirmationHtml,
-      mergeData: {},
-    });
+    // await sendTransactionalEmail({
+    //   senderName: "SI<3> Scholars Program",
+    //   senderEmail: "scholars@si3.space",
+    //   toName: formData.name,
+    //   toEmail: formData.email,
+    //   subject: "Your Scholars Program Application Has Been Received",
+    //   htmlContent: confirmationHtml,
+    //   mergeData: {},
+    // });
 
     res.status(200).json({
       status: "success",
