@@ -275,6 +275,43 @@ const validateDiversityMail = [
     .withMessage("Market impact must be between 10 and 1000 characters"),
 ];
 
+export const validateScholarsProgramSubmission = [
+  body("formData").isObject().withMessage("formData must be an object"),
+
+  body("formData.name")
+    .notEmpty()
+    .withMessage("Name is required")
+    .isString()
+    .withMessage("Name must be a string")
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage("Name must be at most 100 characters"),
+
+  body("formData.email")
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Invalid email address")
+    .trim()
+    .toLowerCase(),
+
+  body("formData.interests")
+    .isArray({ min: 1 })
+    .withMessage("At least one interest is required"),
+
+  body("formData.details")
+    .optional()
+    .isString()
+    .withMessage("Details must be a string")
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage("Details must be at most 1000 characters"),
+
+  body("formData.newsletter")
+    .isIn(["yes", "no"])
+    .withMessage('Newsletter preference must be either "yes" or "no"'),
+];
+
 const validatePartnerSubmission = [
   body("formData.name")
     .notEmpty()

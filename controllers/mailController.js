@@ -417,13 +417,14 @@ import {
   tempMail,
   guideEmailTemplate,
   partnerProgramEmailTemplate,
+  scholarsProgramEmailTemplate,
   diversityTrackerEmailTemplate,
 } from "../utils/emailTemplates.js";
 
 import {
-  sendTransactionalEmail,
-  verifyConnection,
   getSMTPStatus,
+  verifyConnection,
+  sendTransactionalEmail,
 } from "../utils/sendProtonMail.js";
 
 import Guide from "../models/guideModel.js";
@@ -662,6 +663,188 @@ const sendDiversityTrackerSubmissionEmail = catchAsync(
       status: "success",
       message: "Diversity tracker submission saved and email sent successfully",
       result,
+    });
+  }
+);
+
+/**
+ * Send scholars program submission email using Scholars SMTP
+ *
+ * @route   POST /api/mail/scholars-program
+ * @desc    Process scholars program form submission, save to database, and send notification + confirmation emails
+ * @access  Public
+ * @method  POST
+ * @validation Uses validateScholarsSubmission middleware
+ *
+ * @param   {Object} req.body - Request body
+ * @param   {Object} req.body.formData - Form data object (required)
+ * @param   {string} req.body.formData.name - Full name (required, 2-100 chars)
+ * @param   {string} req.body.formData.email - Email address (required, valid email)
+ * @param   {string[]|string} req.body.formData.interests - Interests array or string (required)
+ * @param   {string} [req.body.formData.details] - Additional details (optional, max 1000 chars)
+ * @param   {string|boolean} req.body.formData.newsletter - Newsletter subscription: "yes"|"no" or boolean (required)
+ *
+ * @returns {Object} Response object
+ * @returns {string} returns.status - "success" or "error"
+ * @returns {string} returns.message - Success message
+ * @returns {Object} returns.result - Email sending results for both notification and confirmation
+ *
+ * @throws  {AppError} 400 - Missing form data or validation errors
+ * @throws  {AppError} 500 - Database save error
+ * @throws  {AppError} 503 - Email service unavailable
+ *
+ * @example
+ * // Request
+ * POST /api/mail/scholars-program
+ * {
+ *   "formData": {
+ *     "name": "Sarah Johnson",
+ *     "email": "sarah.johnson@university.edu",
+ *     "interests": ["Research", "Blockchain Technology", "Academic Writing"],
+ *     "details": "I am a PhD student interested in blockchain research and would love to contribute to the SI<3> scholars program...",
+ *     "newsletter": "yes"
+ *   }
+ * }
+ *
+ * // Response
+ * {
+ *   "status": "success",
+ *   "message": "Scholars program application submitted and emails sent successfully",
+ *   "result": {
+ *     "notification": {
+ *       "success": true,
+ *       "messageId": "scholars123-notify",
+ *       "smtpUsed": "scholars"
+ *     },
+ *     "confirmation": {
+ *       "success": true,
+ *       "messageId": "scholars123-confirm",
+ *       "smtpUsed": "scholars"
+ *     }
+ *   }
+ * }
+ */
+
+export const sendScholarsProgramSubmissionEmail = catchAsync(
+  async (req, res, next) => {
+    const { formData } = req.body;
+
+    if (!formData) {
+      return next(new AppError("Missing form data", 400));
+    }
+
+    // Validate required fields
+    if (!formData.name || !formData.email || !formData.interests) {
+      return next(
+        new AppError("Missing required fields: name, email, interests", 400)
+      );
+    }
+
+    // Create a new scholar application with normalized data
+    const scholarData = {
+      name: formData.name,
+      email: formData.email,
+      interests: formData.interests,
+      details: formData.details || "",
+      newsletter: formData.newsletter === "yes" || formData.newsletter === true,
+    };
+
+    // Save to database
+    await ScholarsProgram.create(scholarData);
+
+    // Generate notification email content for internal team
+    const notificationHtml = scholarsProgramEmailTemplate(scholarData);
+
+    // Send notification email to internal team using Scholars SMTP
+    const notificationResult = await sendTransactionalEmail({
+      senderName: "SI<3>",
+      senderEmail: "scholars@si3.space",
+      toName: "SI<3> Team",
+      toEmail: "kara@si3.space", // Internal notification recipient
+      subject: `New Scholars Program Application: ${formData.name}`,
+      htmlContent: notificationHtml,
+      emailType: "scholars", // Uses Scholars SMTP
+    });
+
+    // Generate confirmation email content for the applicant
+    const confirmationHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4C1192; margin: 0; font-size: 28px;">SI<3> Scholars Program</h1>
+          </div>
+          
+          <h2 style="color: #4C1192; margin-bottom: 20px;">Thank you for your application, ${formData.name}!</h2>
+          
+          <p style="color: #333; line-height: 1.6; margin-bottom: 20px;">
+            We've received your Scholars Program application and are excited about your interest in joining our community of researchers and academics.
+          </p>
+          
+          <div style="background-color: #f0f8ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #4C1192; margin-top: 0;">What happens next?</h3>
+            <ul style="color: #333; line-height: 1.6;">
+              <li>Our team will review your application within 5-7 business days</li>
+              <li>We'll reach out with more information about the program structure</li>
+              <li>Qualified candidates will be invited for a brief interview</li>
+              <li>Selected scholars will receive program details and next steps</li>
+            </ul>
+          </div>
+          
+          <p style="color: #333; line-height: 1.6; margin-bottom: 20px;">
+            In the meantime, feel free to explore our community resources and connect with us:
+          </p>
+          
+          <div style="margin: 25px 0;">
+            <a href="https://twitter.com/si3_ecosystem" target="_blank" 
+               style="display: inline-block; margin: 5px 10px; padding: 10px 20px; background-color: #1DA1F2; color: white; text-decoration: none; border-radius: 5px;">
+              Follow us on Twitter
+            </a>
+            <a href="https://www.linkedin.com/company/si3ecosystem/" target="_blank"
+               style="display: inline-block; margin: 5px 10px; padding: 10px 20px; background-color: #0077B5; color: white; text-decoration: none; border-radius: 5px;">
+              Connect on LinkedIn
+            </a>
+            <a href="https://www.si3.space/" target="_blank"
+               style="display: inline-block; margin: 5px 10px; padding: 10px 20px; background-color: #4C1192; color: white; text-decoration: none; border-radius: 5px;">
+              Visit our website
+            </a>
+          </div>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 14px; margin: 0;">
+              If you have any questions, please don't hesitate to reach out to us at 
+              <a href="mailto:scholars@si3.space" style="color: #4C1192;">scholars@si3.space</a>
+            </p>
+          </div>
+          
+          <div style="margin-top: 20px; text-align: center;">
+            <p style="color: #333; margin: 0;">
+              Best regards,<br>
+              <strong style="color: #4C1192;">The SI<3> Scholars Team</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Send confirmation email to the applicant using Scholars SMTP
+    const confirmationResult = await sendTransactionalEmail({
+      senderName: "SI<3> Scholars Program",
+      senderEmail: "scholars@si3.space",
+      toName: formData.name,
+      toEmail: formData.email,
+      subject: "Your Scholars Program Application Has Been Received",
+      htmlContent: confirmationHtml,
+      emailType: "scholars", // Uses Scholars SMTP
+    });
+
+    res.status(200).json({
+      status: "success",
+      message:
+        "Scholars program application submitted and emails sent successfully",
+      result: {
+        notification: notificationResult,
+        confirmation: confirmationResult,
+      },
     });
   }
 );

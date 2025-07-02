@@ -151,11 +151,12 @@ const SMTP_CONFIGS = {
 
 // Email type to SMTP mapping
 const EMAIL_TYPE_MAPPING = {
-  guide: "guides",
-  partner: "partners",
-  diversity: "kara",
   basic: "kara",
+  guide: "guides",
   temp: "partners",
+  diversity: "kara",
+  partner: "partners",
+  scholars: "scholars",
 };
 
 /**
@@ -180,7 +181,7 @@ const getSMTPConfig = (emailType = "basic") => {
 const createTransporter = (emailType) => {
   const smtpConfig = getSMTPConfig(emailType);
 
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.SMTP_SERVER, // smtp.protonmail.ch
     port: parseInt(process.env.SMTP_PORT) || 587,
     secure: false, // Use STARTTLS
@@ -262,12 +263,6 @@ export const sendTransactionalEmail = async ({
     // Send the email
     const info = await transporter.sendMail(mailOptions);
 
-    console.log(`Email sent successfully via ${emailType} SMTP:`, {
-      messageId: info.messageId,
-      to: toEmail,
-      subject: subject,
-    });
-
     // Close transporter
     transporter.close();
 
@@ -278,11 +273,6 @@ export const sendTransactionalEmail = async ({
       smtpUsed: EMAIL_TYPE_MAPPING[emailType] || "kara",
     };
   } catch (error) {
-    console.error(`Failed to send email via ${emailType} SMTP:`, {
-      error: error.message,
-      to: toEmail,
-      subject: subject,
-    });
     throw new Error(`Email sending failed: ${error.message}`);
   }
 };
@@ -294,11 +284,11 @@ export const verifyConnection = async (emailType = "basic") => {
   try {
     const transporter = createTransporter(emailType);
     await transporter.verify();
+
     transporter.close();
-    console.log(`SMTP connection verified for ${emailType}`);
+
     return true;
   } catch (error) {
-    console.error(`SMTP connection failed for ${emailType}:`, error.message);
     return false;
   }
 };

@@ -5,6 +5,7 @@ import {
   sendBasicEmail,
   sendGuideSubmissionEmail,
   sendPartnerProgramSubmissionEmail,
+  sendScholarsProgramSubmissionEmail,
   sendDiversityTrackerSubmissionEmail,
 } from "../controllers/mailController.js";
 
@@ -13,6 +14,7 @@ import {
   validateDiversityMail,
   validateGuideSubmission,
   validatePartnerSubmission,
+  validateScholarsProgramSubmission,
 } from "../middleware/validators/mailValidators.js";
 import validationMiddleware from "../middleware/validationMiddleware.js";
 
@@ -21,17 +23,17 @@ const router = express.Router();
 router.post("/basic", sendBasicEmail);
 
 router.post(
-  "/partners-program",
+  "/partners",
   validatePartnerSubmission,
   validationMiddleware,
   sendPartnerProgramSubmissionEmail
 );
 
 router.post(
-  "/diversity-tracker",
-  validateDiversityMail,
+  "/scholars",
+  validateScholarsProgramSubmission,
   validationMiddleware,
-  sendDiversityTrackerSubmissionEmail
+  sendScholarsProgramSubmissionEmail
 );
 
 router.post(
@@ -39,6 +41,13 @@ router.post(
   validateGuideSubmission,
   validationMiddleware,
   sendGuideSubmissionEmail
+);
+
+router.post(
+  "/diversity-tracker",
+  validateDiversityMail,
+  validationMiddleware,
+  sendDiversityTrackerSubmissionEmail
 );
 
 router.post("/bulk", validateBulkEmail, validationMiddleware, sendBulkEmail);
