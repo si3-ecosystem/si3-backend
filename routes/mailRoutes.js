@@ -1,29 +1,32 @@
 import express from "express";
 
 import {
+  sendBulkEmail,
   sendBasicEmail,
-  sendDiversityTrackerSubmissionEmail,
   sendGuideSubmissionEmail,
   sendPartnerProgramSubmissionEmail,
-  sendTempEmail,
+  sendDiversityTrackerSubmissionEmail,
 } from "../controllers/mailController.js";
 
 import {
+  validateBulkEmail,
   validateDiversityMail,
-  validatePartnerSubmission,
   validateGuideSubmission,
+  validatePartnerSubmission,
 } from "../middleware/validators/mailValidators.js";
 import validationMiddleware from "../middleware/validationMiddleware.js";
 
 const router = express.Router();
 
 router.post("/basic", sendBasicEmail);
+
 router.post(
   "/partners-program",
   validatePartnerSubmission,
   validationMiddleware,
   sendPartnerProgramSubmissionEmail
 );
+
 router.post(
   "/diversity-tracker",
   validateDiversityMail,
@@ -38,6 +41,6 @@ router.post(
   sendGuideSubmissionEmail
 );
 
-router.post("/temp", sendTempEmail);
+router.post("/bulk", validateBulkEmail, validationMiddleware, sendBulkEmail);
 
 export default router;

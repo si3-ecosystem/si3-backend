@@ -34,13 +34,8 @@ const validateDiversityMail = [
     .notEmpty()
     .withMessage("Ethnicity is required")
     .custom((value) => {
-      // Accept both string and array
-      if (typeof value === "string") {
-        return value.trim().length > 0;
-      }
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
+      if (typeof value === "string") return value.trim().length > 0;
+      if (Array.isArray(value)) return value.length > 0;
       return false;
     })
     .withMessage("Ethnicity must be provided"),
@@ -49,13 +44,8 @@ const validateDiversityMail = [
     .notEmpty()
     .withMessage("Disability status is required")
     .custom((value) => {
-      // Accept both string and array
-      if (typeof value === "string") {
-        return value.trim().length > 0;
-      }
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
+      if (typeof value === "string") return value.trim().length > 0;
+      if (Array.isArray(value)) return value.length > 0;
       return false;
     })
     .withMessage("Disability status must be provided"),
@@ -75,7 +65,7 @@ const validateDiversityMail = [
     .isInt({ min: 1, max: 10 })
     .withMessage("Equity Scale must be an integer between 1 and 10"),
 
-  // Existing optional fields
+  // Optional fields
   body("formData.improvementSuggestions")
     .optional()
     .isString()
@@ -116,13 +106,12 @@ const validateDiversityMail = [
     .isLength({ max: 100 })
     .withMessage("Active Grants Participated must be at most 100 characters"),
 
-  // New Accessibility fields
+  // Accessibility fields
   body("formData.offeringClear")
     .notEmpty()
     .withMessage("Clarity of organization's offering is required")
     .customSanitizer((value) => {
       if (typeof value === "string") {
-        // Convert first letter to uppercase, rest to lowercase
         return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
@@ -140,25 +129,19 @@ const validateDiversityMail = [
 
   body("formData.engagementChannels")
     .custom((value) => {
-      // Handle both string and array inputs
-      if (typeof value === "string") {
-        return value.trim().length > 0;
-      }
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
+      if (typeof value === "string") return value.trim().length > 0;
+      if (Array.isArray(value)) return value.length > 0;
       return false;
     })
     .withMessage("At least one engagement channel must be selected")
     .customSanitizer((value) => {
-      // Convert string to array if needed
       if (typeof value === "string" && value.trim().length > 0) {
         return [value];
       }
       return value;
     }),
 
-  // New Transparency fields
+  // Transparency fields
   body("formData.decentralizedDecisionMaking")
     .notEmpty()
     .withMessage("Decentralized decision making status is required")
@@ -223,7 +206,7 @@ const validateDiversityMail = [
     .isLength({ max: 1000 })
     .withMessage("Grant experience must be at most 1000 characters"),
 
-  // New Inclusivity fields
+  // Inclusivity fields
   body("formData.diversityInitiatives")
     .notEmpty()
     .withMessage("Diversity initiatives status is required")
@@ -272,7 +255,7 @@ const validateDiversityMail = [
     .isIn(["Yes", "No", "Unsure"])
     .withMessage("Invalid selection for highlights underrepresented"),
 
-  // New Impact fields
+  // Impact fields
   body("formData.uniqueValue")
     .notEmpty()
     .withMessage("Unique value is required")
@@ -348,6 +331,7 @@ const validatePartnerSubmission = [
 
 const validateGuideSubmission = [
   body("formData").isObject().withMessage("formData must be an object"),
+
   body("formData.name")
     .notEmpty()
     .withMessage("Name is required")
@@ -401,8 +385,61 @@ const validateGuideSubmission = [
     .trim(),
 ];
 
+const validateBulkEmail = [
+  body("recipients")
+    .isArray({ min: 1, max: 100 })
+    .withMessage("Recipients must be an array with 1-100 items"),
+
+  body("recipients.*.email")
+    .isEmail()
+    .withMessage("Each recipient must have a valid email")
+    .normalizeEmail(),
+
+  body("recipients.*.name")
+    .optional()
+    .isString()
+    .withMessage("Recipient name must be a string")
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage("Recipient name must be at most 100 characters"),
+
+  body("subject")
+    .notEmpty()
+    .withMessage("Subject is required")
+    .isString()
+    .withMessage("Subject must be a string")
+    .trim()
+    .isLength({ min: 1, max: 200 })
+    .withMessage("Subject must be between 1 and 200 characters"),
+
+  body("htmlContent")
+    .notEmpty()
+    .withMessage("Email content is required")
+    .isString()
+    .withMessage("Email content must be a string")
+    .trim()
+    .isLength({ min: 1, max: 50000 })
+    .withMessage("Email content must be between 1 and 50000 characters"),
+
+  body("senderName")
+    .optional()
+    .isString()
+    .withMessage("Sender name must be a string")
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage("Sender name must be at most 100 characters"),
+
+  body("emailType")
+    .optional()
+    .isIn(["basic", "guide", "partner", "diversity", "temp"])
+    .withMessage(
+      "Email type must be one of: basic, guide, partner, diversity, temp"
+    ),
+];
+
 export {
+  validateBulkEmail,
   validateDiversityMail,
-  validatePartnerSubmission,
   validateGuideSubmission,
+  validatePartnerSubmission,
 };
