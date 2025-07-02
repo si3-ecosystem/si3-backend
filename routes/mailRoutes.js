@@ -14,7 +14,7 @@ import {
   validateDiversityMail,
   validateGuideSubmission,
   validatePartnerSubmission,
-  validateScholarsProgramSubmission,
+  validateScholarsSubmission,
 } from "../middleware/validators/mailValidators.js";
 import validationMiddleware from "../middleware/validationMiddleware.js";
 
@@ -31,7 +31,7 @@ router.post(
 
 router.post(
   "/scholars",
-  validateScholarsProgramSubmission,
+  validateScholarsSubmission,
   validationMiddleware,
   sendScholarsProgramSubmissionEmail
 );

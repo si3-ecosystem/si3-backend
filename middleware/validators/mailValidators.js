@@ -275,8 +275,12 @@ const validateDiversityMail = [
     .withMessage("Market impact must be between 10 and 1000 characters"),
 ];
 
-export const validateScholarsProgramSubmission = [
-  body("formData").isObject().withMessage("formData must be an object"),
+const validateScholarsSubmission = [
+  body("formData")
+    .isObject()
+    .withMessage("formData must be an object")
+    .notEmpty()
+    .withMessage("formData cannot be empty"),
 
   body("formData.name")
     .notEmpty()
@@ -284,32 +288,43 @@ export const validateScholarsProgramSubmission = [
     .isString()
     .withMessage("Name must be a string")
     .trim()
-    .isLength({ max: 100 })
-    .withMessage("Name must be at most 100 characters"),
+    .escape()
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Name must be between 2 and 100 characters"),
 
   body("formData.email")
     .notEmpty()
     .withMessage("Email is required")
     .isEmail()
-    .withMessage("Invalid email address")
-    .trim()
-    .toLowerCase(),
+    .withMessage("Email must be a valid email address")
+    .normalizeEmail(),
 
   body("formData.interests")
-    .isArray({ min: 1 })
-    .withMessage("At least one interest is required"),
+    .custom((value) => {
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === "string") return value.trim().length > 0;
+      return false;
+    })
+    .withMessage(
+      "Interests are required and must be a non-empty string or array"
+    ),
 
   body("formData.details")
     .optional()
     .isString()
     .withMessage("Details must be a string")
     .trim()
+    .escape()
     .isLength({ max: 1000 })
     .withMessage("Details must be at most 1000 characters"),
 
   body("formData.newsletter")
-    .isIn(["yes", "no"])
-    .withMessage('Newsletter preference must be either "yes" or "no"'),
+    .notEmpty()
+    .withMessage("Newsletter preference is required")
+    .custom((value) => {
+      return value === "yes" || value === "no" || typeof value === "boolean";
+    })
+    .withMessage("Newsletter must be 'yes', 'no', or a boolean value"),
 ];
 
 const validatePartnerSubmission = [
@@ -479,4 +494,5 @@ export {
   validateDiversityMail,
   validateGuideSubmission,
   validatePartnerSubmission,
+  validateScholarsSubmission,
 };
