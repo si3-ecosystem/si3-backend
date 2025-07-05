@@ -3,9 +3,9 @@ import Redis from "ioredis";
 // Initialize Redis
 const REDIS_CONFIG = {
   host: process.env.REDIS_HOST || "localhost",
-  port: process.env.REDIS_PORT || 6379,
+  port: parseInt(process.env.REDIS_PORT || "6379", 10),
   tls: process.env.REDIS_TLS === "true" ? {} : undefined,
-  retryStrategy: (times) => {
+  retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
     return delay;
   },
