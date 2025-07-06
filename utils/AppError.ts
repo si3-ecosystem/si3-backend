@@ -2,12 +2,13 @@ class AppError extends Error {
   public statusCode: number;
   public status: string;
   public isOperational: boolean;
-  public errorCode: string | null;
+  public errorCode: string;
+  public timestamp: string;
 
   constructor(
     message: string,
     statusCode: number,
-    errorCode: string | null = null
+    errorCode: string = "UNKNOWN_ERROR"
   ) {
     super(message);
 
@@ -15,6 +16,7 @@ class AppError extends Error {
     this.status = `${statusCode}`.startsWith("4") ? "fail" : "error";
     this.isOperational = true;
     this.errorCode = errorCode;
+    this.timestamp = new Date().toISOString();
 
     Error.captureStackTrace(this, this.constructor);
   }
@@ -40,8 +42,15 @@ class AppError extends Error {
     return new AppError(message, 409, "CONFLICT");
   }
 
-  static validationError(message: string = "Validation Error"): AppError {
-    return new AppError(message, 422, "VALIDATION_ERROR");
+  static validationError(
+    message: string = "Validation Error",
+    details?: any
+  ): AppError {
+    const error = new AppError(message, 422, "VALIDATION_ERROR");
+    if (details) {
+      (error as any).details = details;
+    }
+    return error;
   }
 
   static tooManyRequests(message: string = "Too Many Requests"): AppError {
@@ -52,6 +61,20 @@ class AppError extends Error {
     message: string = "Internal Server Error"
   ): AppError {
     return new AppError(message, 500, "INTERNAL_SERVER_ERROR");
+  }
+
+  // Convert to JSON for consistent API responses
+  toJSON() {
+    return {
+      status: this.status,
+      error: {
+        message: this.message,
+        statusCode: this.statusCode,
+        errorCode: this.errorCode,
+        timestamp: this.timestamp,
+        ...((this as any).details && { details: (this as any).details }),
+      },
+    };
   }
 }
 

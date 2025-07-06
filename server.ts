@@ -7,6 +7,8 @@ import {
 } from "./controllers/errorController";
 import { mainMiddleware } from "./middleware/mainMiddleware";
 
+import emailRouter from "./routes/emailRoutes";
+
 import redis from "./config/redis";
 
 import redisHelper from "./helpers/redisHelper";
@@ -55,6 +57,8 @@ app.get("/api", (req: Request, res: Response) => {
     status: "active",
   });
 });
+
+app.use("/api/email", emailRouter);
 
 // Handle 404 errors
 app.use(notFoundHandler);

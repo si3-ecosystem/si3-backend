@@ -1,120 +1,91 @@
 import { Request, Response, NextFunction } from "express";
+
 import AppError from "../utils/AppError";
 
-// MongoDB error interfaces
-interface CastError extends Error {
-  path: string;
-  value: any;
+// Error interfaces
+interface MongoError extends Error {
+  code?: number;
+  keyValue?: Record<string, any>;
+  errors?: Record<string, any>;
+  path?: string;
+  value?: any;
 }
 
-interface DuplicateFieldError extends Error {
-  code: number;
-  errmsg: string;
+interface JWTError extends Error {
+  name: "JsonWebTokenError" | "TokenExpiredError";
 }
 
-interface ValidationError extends Error {
-  errors: Record<string, { message: string }>;
-}
-
-// Handle MongoDB cast errors
-const handleCastErrorDB = (err: CastError): AppError => {
+// Handle MongoDB cast errors (invalid ObjectId, etc.)
+const handleCastError = (err: MongoError): AppError => {
   const message = `Invalid ${err.path}: ${err.value}`;
-  return new AppError(message, 400);
+  return AppError.badRequest(message);
 };
 
-// Handle MongoDB duplicate field errors
-const handleDuplicateFieldsDB = (err: DuplicateFieldError): AppError => {
-  const value = err.errmsg.match(/(["'])(\\?.)*?\1/)?.[0] || "unknown value";
-  const message = `Duplicate field value: ${value}. Please use another value!`;
-  return new AppError(message, 409);
+// Handle MongoDB duplicate key errors
+const handleDuplicateKeyError = (err: MongoError): AppError => {
+  const field = Object.keys(err.keyValue || {})[0] || "field";
+  const value = Object.values(err.keyValue || {})[0] || "value";
+  const message = `${field} '${value}' already exists. Please use a different ${field}.`;
+
+  return AppError.conflict(message);
 };
 
 // Handle MongoDB validation errors
-const handleValidationErrorDB = (err: ValidationError): AppError => {
-  const errors = Object.values(err.errors).map((el) => el.message);
-  const message = `Invalid input data. ${errors.join(". ")}`;
-  return new AppError(message, 400);
+const handleValidationError = (err: MongoError): AppError => {
+  const errors = Object.values(err.errors || {}).map(
+    (error: any) => error.message
+  );
+  const message = `Invalid input data: ${errors.join(", ")}`;
+  return AppError.validationError(message, errors);
 };
 
 // Handle JWT errors
-const handleJWTError = (): AppError => {
-  return new AppError("Invalid token. Please log in again!", 401);
-};
-
-const handleJWTExpiredError = (): AppError => {
-  return new AppError("Your token has expired! Please log in again.", 401);
-};
-
-// Send error response for development
-const sendErrorDev = (err: any, req: Request, res: Response): void => {
-  // API error response
-  if (req.originalUrl.startsWith("/api")) {
-    res.status(err.statusCode || 500).json({
-      status: err.status,
-      error: {
-        message: err.message,
-        statusCode: err.statusCode,
-        errorCode: err.errorCode || "UNKNOWN_ERROR",
-        timestamp: new Date().toISOString(),
-        stack: err.stack,
-      },
-    });
-    return;
+const handleJWTError = (err: JWTError): AppError => {
+  if (err.name === "TokenExpiredError") {
+    return AppError.unauthorized(
+      "Your session has expired. Please log in again."
+    );
   }
+  return AppError.unauthorized(
+    "Invalid authentication token. Please log in again."
+  );
+};
 
-  // Non-API routes
-  res.status(err.statusCode || 500).json({
+// Send detailed error in development
+const sendErrorDev = (err: AppError, req: Request, res: Response): void => {
+  console.error("ERROR 💥", err);
+
+  res.status(err.statusCode).json({
     status: err.status,
-    message: err.message,
-    stack: err.stack,
+    error: {
+      message: err.message,
+      statusCode: err.statusCode,
+      errorCode: err.errorCode,
+      timestamp: err.timestamp,
+      stack: err.stack,
+      ...((err as any).details && { details: (err as any).details }),
+    },
   });
 };
 
-// Send error response for production
-const sendErrorProd = (err: any, req: Request, res: Response): void => {
-  // API error response
-  if (req.originalUrl.startsWith("/api")) {
-    // Operational, trusted error: send message to client
-    if (err.isOperational) {
-      res.status(err.statusCode || 500).json({
-        status: err.status,
-        error: {
-          message: err.message,
-          statusCode: err.statusCode,
-          errorCode: err.errorCode || "UNKNOWN_ERROR",
-          timestamp: new Date().toISOString(),
-        },
-      });
-      return;
-    }
+// Send limited error info in production
+const sendErrorProd = (err: AppError, req: Request, res: Response): void => {
+  // Operational errors: safe to send to client
+  if (err.isOperational) {
+    res.status(err.statusCode).json(err.toJSON());
+  } else {
+    // Programming errors: don't leak details
 
-    // Programming or other unknown error: don't leak error details
     res.status(500).json({
       status: "error",
       error: {
-        message: "Something went very wrong!",
+        message: "Something went wrong!",
         statusCode: 500,
         errorCode: "INTERNAL_SERVER_ERROR",
         timestamp: new Date().toISOString(),
       },
     });
-    return;
   }
-
-  // Non-API routes
-  if (err.isOperational) {
-    res.status(err.statusCode || 500).json({
-      status: err.status,
-      message: err.message,
-    });
-    return;
-  }
-
-  // Programming or other unknown error
-  res.status(500).json({
-    status: "error",
-    message: "Please try again later.",
-  });
 };
 
 // Global error handling middleware
@@ -124,46 +95,86 @@ export const globalErrorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  err.statusCode = err.statusCode || 500;
-  err.status = err.status || "error";
+  let error = err;
 
+  // Convert known errors to AppError
+  if (err.name === "CastError") {
+    error = handleCastError(err);
+  } else if (err.code === 11000) {
+    error = handleDuplicateKeyError(err);
+  } else if (err.name === "ValidationError") {
+    error = handleValidationError(err);
+  } else if (
+    err.name === "JsonWebTokenError" ||
+    err.name === "TokenExpiredError"
+  ) {
+    error = handleJWTError(err);
+  } else if (!(err instanceof AppError)) {
+    // Convert unknown errors to AppError
+    error = new AppError(
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "Something went wrong!",
+      err.statusCode || 500,
+      "INTERNAL_SERVER_ERROR"
+    );
+  }
+
+  // Send appropriate response
   if (process.env.NODE_ENV === "development") {
-    sendErrorDev(err, req, res);
+    sendErrorDev(error, req, res);
   } else {
-    let error = { ...err };
-    error.message = err.message;
-    error.name = err.name;
-
-    // Handle specific error types
-    if (error.name === "CastError") error = handleCastErrorDB(error);
-    if (error.code === 11000) error = handleDuplicateFieldsDB(error);
-    if (error.name === "ValidationError")
-      error = handleValidationErrorDB(error);
-    if (error.name === "JsonWebTokenError") error = handleJWTError();
-    if (error.name === "TokenExpiredError") error = handleJWTExpiredError();
-
     sendErrorProd(error, req, res);
   }
 };
 
-// 404 handler
+// 404 handler for unmatched routes
 export const notFoundHandler = (
   req: Request,
   res: Response,
   next: NextFunction
 ): void => {
-  const err = new AppError(
-    `Can't find ${req.originalUrl} on this server!`,
-    404
-  );
-  next(err);
+  const message = `Route ${req.method} ${req.originalUrl} not found`;
+  next(AppError.notFound(message));
 };
 
-// Async error handler wrapper
-export const catchAsync = (
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
-) => {
+// Validation middleware helper
+export const validateRequired = (fields: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    fn(req, res, next).catch(next);
+    const missingFields = fields.filter((field) => !req.body[field]);
+
+    if (missingFields.length > 0) {
+      const message = `Missing required fields: ${missingFields.join(", ")}`;
+      return next(AppError.badRequest(message));
+    }
+
+    next();
+  };
+};
+
+// Async validation helper
+export const validateAsync = (
+  validationFn: (data: any) => Promise<boolean | string>
+) => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const result = await validationFn(req.body);
+
+      if (result === true) {
+        next();
+      } else {
+        next(
+          AppError.badRequest(
+            typeof result === "string" ? result : "Validation failed"
+          )
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
   };
 };
