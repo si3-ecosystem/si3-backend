@@ -16,6 +16,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
 const errorController_1 = require("./controllers/errorController");
 const mainMiddleware_1 = require("./middleware/mainMiddleware");
+const emailRoutes_1 = __importDefault(require("./routes/emailRoutes"));
 const redis_1 = __importDefault(require("./config/redis"));
 const redisHelper_1 = __importDefault(require("./helpers/redisHelper"));
 // Load environment variables
@@ -53,6 +54,7 @@ app.get("/api", (req, res) => {
         status: "active",
     });
 });
+app.use("/api/email", emailRoutes_1.default);
 // Handle 404 errors
 app.use(errorController_1.notFoundHandler);
 // Global error handler
