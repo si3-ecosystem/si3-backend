@@ -506,9 +506,9 @@ export const sendScholarsSubmissionEmail = catchAsync(
 
     // Send notification email to admin using Scholars SMTP
     const adminNotificationResult = await emailService.sendEmail({
-      senderName: "SI<3>",
+      senderName: "SI U Scholars",
       senderEmail: emailService.getSenderEmail("scholars"),
-      toName: "SI<3> Team",
+      toName: "SI U Team",
       toEmail: "kara@si3.space",
       subject: `New SI U Scholar Submission: ${data.name}`,
       htmlContent: adminNotificationHtml,
@@ -520,7 +520,7 @@ export const sendScholarsSubmissionEmail = catchAsync(
 
     // Send confirmation email to the applicant using Scholars SMTP
     const applicantConfirmationResult = await emailService.sendEmail({
-      senderName: "SI<3> Scholars",
+      senderName: "SI U Scholars",
       senderEmail: emailService.getSenderEmail("scholars"),
       toName: data.name,
       toEmail: data.email,
@@ -719,9 +719,9 @@ export const sendGuideSubmissionEmail = catchAsync(
 
     // Send notification email to admin using Guides SMTP
     const adminNotificationResult = await emailService.sendEmail({
-      senderName: "SI<3>",
+      senderName: "SI Her Guides",
       senderEmail: emailService.getSenderEmail("guide"),
-      toName: "SI<3> Team",
+      toName: "SI Her Team",
       toEmail: "kara@si3.space",
       subject: `New Si Her Guide Application: ${data.name}`,
       htmlContent: adminNotificationHtml,
@@ -733,7 +733,7 @@ export const sendGuideSubmissionEmail = catchAsync(
 
     // Send confirmation email to the applicant using Guides SMTP
     const applicantConfirmationResult = await emailService.sendEmail({
-      senderName: "SI<3> Guides",
+      senderName: "SI Her Guides",
       senderEmail: emailService.getSenderEmail("guide"),
       toName: data.name,
       toEmail: data.email,
