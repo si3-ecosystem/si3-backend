@@ -16,12 +16,15 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
 const errorController_1 = require("./controllers/errorController");
 const mainMiddleware_1 = require("./middleware/mainMiddleware");
+const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
+const emailRoutes_1 = __importDefault(require("./routes/emailRoutes"));
 const redis_1 = __importDefault(require("./config/redis"));
+const db_1 = require("./config/db");
 const redisHelper_1 = __importDefault(require("./helpers/redisHelper"));
 // Load environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
-const PORT = parseInt(process.env.PORT || "3000", 10);
+const PORT = parseInt(process.env.PORT || "8080", 10);
 // Trust proxy for production
 app.set("trust proxy", 1);
 // Apply middleware
@@ -35,24 +38,28 @@ redis_1.default.on("error", (error) => {
 redis_1.default.on("connect", () => {
     console.log("✅ Successfully connected to Redis");
 });
+// Root route
+app.get("/", (req, res) => {
+    res.json({
+        message: "SI3 Backend API",
+        version: "1.0.0",
+        status: "active",
+    });
+});
 // Health check endpoint
 app.get("/health", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const redisStatus = redis_1.default.status === "ready";
+    const dbStatus = (0, db_1.checkConnection)();
     res.status(200).json({
         status: "success",
         services: {
             redis: redisStatus ? "connected" : "disconnected",
+            mongodb: dbStatus.isConnected ? "connected" : "disconnected",
         },
     });
 }));
-// API root
-app.get("/api", (req, res) => {
-    res.json({
-        message: "SI3 Backend API",
-        version: "v1",
-        status: "active",
-    });
-});
+app.use("/api/auth", authRoutes_1.default);
+app.use("/api/email", emailRoutes_1.default);
 // Handle 404 errors
 app.use(errorController_1.notFoundHandler);
 // Global error handler
@@ -60,12 +67,12 @@ app.use(errorController_1.globalErrorHandler);
 // Start server
 const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        yield (0, db_1.connectDB)();
         // Start server
         const server = app.listen(PORT, () => {
             console.log(`🚀 Server running on port ${PORT}`);
             console.log(`📱 Environment: ${process.env.NODE_ENV || "development"}`);
             console.log(`🔗 Health: http://localhost:${PORT}/health`);
-            console.log(`📊 API: http://localhost:${PORT}/api`);
         });
         // Graceful shutdown
         const shutdown = (signal) => {

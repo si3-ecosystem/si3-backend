@@ -4,10 +4,10 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IPartnerProgram extends Document {
   name: string;
   email: string;
-  companyName: string;
-  interests: string[];
   details?: string;
+  companyName: string;
   newsletter: boolean;
+  interests: string[];
 
   // Metadata
   createdAt: Date;
@@ -71,7 +71,7 @@ const partnerProgramSchema = new Schema<IPartnerProgram>(
   },
   {
     timestamps: true,
-    collection: "partnerPrograms",
+    collection: "partner",
   }
 );
 
@@ -103,7 +103,7 @@ partnerProgramSchema.post("save", function (error: any, doc: any, next: any) {
 
 // Create and export model
 const PartnerProgramModel = mongoose.model<IPartnerProgram>(
-  "PartnerProgram",
+  "Partner",
   partnerProgramSchema
 );
 

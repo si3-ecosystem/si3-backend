@@ -107,6 +107,7 @@ const mainMiddleware = (app) => {
         },
         standardHeaders: true,
         legacyHeaders: false,
+        skip: (req) => process.env.NODE_ENV === "development"
     });
     const authLimiter = (0, express_rate_limit_1.rateLimit)({
         windowMs: 15 * 60 * 1000, // 15 minutes
@@ -121,6 +122,7 @@ const mainMiddleware = (app) => {
         },
         standardHeaders: true,
         legacyHeaders: false,
+        skip: (req) => process.env.NODE_ENV === "development"
     });
     const uploadLimiter = (0, express_rate_limit_1.rateLimit)({
         windowMs: 15 * 60 * 1000, // 15 minutes
@@ -135,6 +137,7 @@ const mainMiddleware = (app) => {
         },
         standardHeaders: true,
         legacyHeaders: false,
+        skip: (req) => process.env.NODE_ENV === "development"
     });
     // Apply rate limiting to API routes
     app.use("/api/", generalLimiter);

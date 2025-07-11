@@ -4,8 +4,8 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IScholarsProgram extends Document {
   name: string;
   email: string;
-  interests: string[];
   details?: string;
+  interests: string[];
   newsletter: boolean;
 
   // Metadata
@@ -61,7 +61,7 @@ const scholarsProgramSchema = new Schema<IScholarsProgram>(
   },
   {
     timestamps: true,
-    collection: "scholarsPrograms",
+    collection: "scholars",
   }
 );
 
@@ -93,7 +93,7 @@ scholarsProgramSchema.post("save", function (error: any, doc: any, next: any) {
 
 // Create and export model
 const ScholarsProgramModel = mongoose.model<IScholarsProgram>(
-  "ScholarsProgram",
+  "Scholar",
   scholarsProgramSchema
 );
 

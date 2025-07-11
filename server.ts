@@ -7,6 +7,7 @@ import {
 } from "./controllers/errorController";
 import { mainMiddleware } from "./middleware/mainMiddleware";
 
+import authRouter from "./routes/authRoutes";
 import emailRouter from "./routes/emailRoutes";
 
 import redis from "./config/redis";
@@ -44,7 +45,6 @@ app.get("/", (req: Request, res: Response) => {
     message: "SI3 Backend API",
     version: "1.0.0",
     status: "active",
-    docs: "/api",
   });
 });
 
@@ -62,15 +62,7 @@ app.get("/health", async (req: Request, res: Response) => {
   });
 });
 
-// API root
-app.get("/api", (req: Request, res: Response) => {
-  res.json({
-    message: "SI3 Backend API",
-    version: "v1",
-    status: "active",
-  });
-});
-
+app.use("/api/auth", authRouter);
 app.use("/api/email", emailRouter);
 
 // Handle 404 errors
@@ -89,7 +81,6 @@ const startServer = async (): Promise<void> => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Environment: ${process.env.NODE_ENV || "development"}`);
       console.log(`🔗 Health: http://localhost:${PORT}/health`);
-      console.log(`📊 API: http://localhost:${PORT}/api`);
     });
 
     // Graceful shutdown

@@ -11,6 +11,10 @@ exports.allowedOrigins = allowedOrigins;
 if (process.env.NODE_ENV === "development") {
     allowedOrigins.push("http://localhost:3000", "http://localhost:8080");
 }
+// Add Vercel deployment URL from environment variable
+if (process.env.VERCEL_URL) {
+    allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
+}
 // Add additional origins from environment variables
 if (process.env.ALLOWED_ORIGINS) {
     const envOrigins = process.env.ALLOWED_ORIGINS.split(",");
