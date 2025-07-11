@@ -10,7 +10,6 @@ import { mainMiddleware } from "./middleware/mainMiddleware";
 import emailRouter from "./routes/emailRoutes";
 
 import redis from "./config/redis";
-
 import redisHelper from "./helpers/redisHelper";
 
 // Load environment variables
@@ -35,6 +34,16 @@ redis.on("error", (error) => {
 
 redis.on("connect", () => {
   console.log("✅ Successfully connected to Redis");
+});
+
+// Root route
+app.get("/", (req: Request, res: Response) => {
+  res.json({
+    message: "SI3 Backend API",
+    version: "1.0.0",
+    status: "active",
+    docs: "/api"
+  });
 });
 
 // Health check endpoint

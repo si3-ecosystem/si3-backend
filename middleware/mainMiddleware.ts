@@ -124,6 +124,7 @@ export const mainMiddleware = (app: Application): void => {
     },
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => process.env.NODE_ENV === "development"
   });
 
   const authLimiter = rateLimit({
@@ -139,6 +140,7 @@ export const mainMiddleware = (app: Application): void => {
     },
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => process.env.NODE_ENV === "development"
   });
 
   const uploadLimiter = rateLimit({
@@ -154,6 +156,7 @@ export const mainMiddleware = (app: Application): void => {
     },
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => process.env.NODE_ENV === "development"
   });
 
   // Apply rate limiting to API routes
