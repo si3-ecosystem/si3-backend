@@ -17,7 +17,7 @@ import redisHelper from "./helpers/redisHelper";
 dotenv.config();
 
 const app: Application = express();
-const PORT: number = parseInt(process.env.PORT || "3000", 10);
+const PORT: number = parseInt(process.env.PORT || "8080", 10);
 
 // Trust proxy for production
 app.set("trust proxy", 1);
