@@ -5,8 +5,8 @@ import {
   getSMTPStatus,
   sendBasicEmail,
   sendGuideSubmissionEmail,
-  sendPartnerProgramSubmissionEmail,
-  sendScholarsProgramSubmissionEmail,
+  sendPartnerSubmissionEmail,
+  sendScholarsSubmissionEmail,
   sendDiversityTrackerSubmissionEmail,
 } from "../controllers/emailController";
 
@@ -28,6 +28,7 @@ const router = Router();
  * @desc    Get SMTP status for all email types
  * @access  Private (Admin only)
  */
+
 router.get("/smtp-status", getSMTPStatus);
 
 /**
@@ -35,30 +36,33 @@ router.get("/smtp-status", getSMTPStatus);
  * @desc    Send basic email
  * @access  Public
  */
-router.post("/basic", validateBasicEmail, validationMiddleware, sendBasicEmail);
 
-/**
- * @route   POST /api/email/partners
- * @desc    Process partner program form submission
- * @access  Public
- */
-router.post(
-  "/partners",
-  validatePartnerSubmission,
-  validationMiddleware,
-  sendPartnerProgramSubmissionEmail
-);
+router.post("/basic", validateBasicEmail, validationMiddleware, sendBasicEmail);
 
 /**
  * @route   POST /api/email/scholars
  * @desc    Process scholars program form submission
  * @access  Public
  */
+
 router.post(
   "/scholars",
   validateScholarsSubmission,
   validationMiddleware,
-  sendScholarsProgramSubmissionEmail
+  sendScholarsSubmissionEmail
+);
+
+/**
+ * @route   POST /api/email/partners
+ * @desc    Process partner program form submission
+ * @access  Public
+ */
+
+router.post(
+  "/partners",
+  validatePartnerSubmission,
+  validationMiddleware,
+  sendPartnerSubmissionEmail
 );
 
 /**
@@ -66,6 +70,7 @@ router.post(
  * @desc    Process guide form submission
  * @access  Public
  */
+
 router.post(
   "/guides",
   validateGuideSubmission,
@@ -78,6 +83,7 @@ router.post(
  * @desc    Process diversity tracker form submission
  * @access  Public
  */
+
 router.post(
   "/diversity-tracker",
   validateDiversityTracker,
@@ -90,6 +96,7 @@ router.post(
  * @desc    Send bulk emails
  * @access  Private (Admin only)
  */
+
 router.post("/bulk", validateBulkEmail, validationMiddleware, sendBulkEmail);
 
 export default router;

@@ -413,10 +413,10 @@ export const sendDiversityTrackerSubmissionEmail = catchAsync(
 );
 
 /**
- * Send scholars program submission email using Scholars SMTP
+ * Send scholars submission email using Scholars SMTP
  *
- * @route   POST /api/email/scholars-program
- * @desc    Process scholars program form submission, save to database, and send notification + confirmation emails
+ * @route   POST /api/email/scholars
+ * @desc    Process scholars form submission, save to database, and send notification + confirmation emails
  * @access  Public
  * @method  POST
  * @validation Uses validateScholarsSubmission middleware
@@ -440,7 +440,7 @@ export const sendDiversityTrackerSubmissionEmail = catchAsync(
  *
  * @example
  * // Request
- * POST /api/email/scholars-program
+ * POST /api/email/scholars
  * {
  *   "formData": {
  *     "name": "Sarah Johnson",
@@ -470,7 +470,7 @@ export const sendDiversityTrackerSubmissionEmail = catchAsync(
  * }
  */
 
-export const sendScholarsProgramSubmissionEmail = catchAsync(
+export const sendScholarsSubmissionEmail = catchAsync(
   async (req: FormSubmissionRequest, res: Response, next: NextFunction) => {
     const { formData } = req.body;
 
@@ -499,7 +499,7 @@ export const sendScholarsProgramSubmissionEmail = catchAsync(
     };
 
     // Save to database
-    // await ScholarsProgramModel.create(scholarData);
+    await ScholarsProgramModel.create(scholarData);
 
     // Generate notification email content for internal team (admin)
     const adminNotificationHtml = scholarsSubmissionTemplate(scholarData);
@@ -510,7 +510,7 @@ export const sendScholarsProgramSubmissionEmail = catchAsync(
       senderEmail: emailService.getSenderEmail("scholars"),
       toName: "SI<3> Team",
       toEmail: "kara@si3.space",
-      subject: `New Scholars Program Application: ${data.name}`,
+      subject: `New SI U Scholar Submission: ${data.name}`,
       htmlContent: adminNotificationHtml,
       emailType: "scholars",
     });
@@ -520,11 +520,11 @@ export const sendScholarsProgramSubmissionEmail = catchAsync(
 
     // Send confirmation email to the applicant using Scholars SMTP
     const applicantConfirmationResult = await emailService.sendEmail({
-      senderName: "SI<3> Scholars Program",
+      senderName: "SI<3> Scholars",
       senderEmail: emailService.getSenderEmail("scholars"),
       toName: data.name,
       toEmail: data.email,
-      subject: "Your Scholars Program Application Has Been Received",
+      subject: "Thank you for joining our waitlist as a Scholar!",
       htmlContent: applicantConfirmationHtml,
       emailType: "scholars",
     });
@@ -537,6 +537,113 @@ export const sendScholarsProgramSubmissionEmail = catchAsync(
         adminNotification: adminNotificationResult,
         applicantConfirmation: applicantConfirmationResult,
       },
+    });
+  }
+);
+
+/**
+ * Send partner submission email using Partners SMTP
+ *
+ * @route   POST /api/email/partners
+ * @desc    Process partner form submission, save to database, and send notification email
+ * @access  Public
+ * @method  POST
+ * @validation Uses validatePartnerSubmission middleware
+ *
+ * @param   {Object} req.body - Request body
+ * @param   {Object} req.body.formData - Form data object (required)
+ * @param   {string} req.body.formData.name - Full name (required, 2-100 chars)
+ * @param   {string} req.body.formData.email - Email address (required, valid email)
+ * @param   {string} req.body.formData.companyName - Company name (required, 2-200 chars)
+ * @param   {string[]|string} req.body.formData.interests - Interests array or string (required)
+ * @param   {string} [req.body.formData.details] - Additional details (optional, max 1000 chars)
+ * @param   {boolean} req.body.formData.newsletter - Newsletter subscription preference (required)
+ *
+ * @returns {Object} Response object
+ * @returns {string} returns.status - "success" or "error"
+ * @returns {string} returns.message - Success message
+ * @returns {Object} returns.result - Email sending result
+ *
+ * @throws  {AppError} 400 - Missing form data, email, name, or validation errors
+ * @throws  {AppError} 500 - Database save error
+ * @throws  {AppError} 503 - Email service unavailable
+ *
+ * @example
+ * // Request
+ * POST /api/email/partners
+ * {
+ *   "formData": {
+ *     "name": "Alex Johnson",
+ *     "email": "alex@techcorp.com",
+ *     "companyName": "TechCorp Solutions",
+ *     "interests": ["Partnership", "Collaboration", "Innovation"],
+ *     "details": "We are interested in exploring partnership opportunities...",
+ *     "newsletter": true
+ *   }
+ * }
+ *
+ * // Response
+ * {
+ *   "status": "success",
+ *   "message": "Partner program submission saved and email sent successfully",
+ *   "result": {
+ *     "success": true,
+ *     "messageId": "partner456-def012",
+ *     "smtpUsed": "partners"
+ *   }
+ * }
+ */
+
+export const sendPartnerSubmissionEmail = catchAsync(
+  async (req: FormSubmissionRequest, res: Response, next: NextFunction) => {
+    const { formData } = req.body;
+
+    if (!formData || !formData.email || !formData.name) {
+      return next(new AppError("Missing form data, email, or name", 400));
+    }
+
+    const data = formData as PartnerFormData;
+
+    await PartnerProgramModel.create(data);
+
+    // Generate notification email content for internal team (admin)
+    const adminNotificationHtml = partnerSubmissionTemplate(data);
+
+    // Send notification email to admin using Partners SMTP
+    const adminNotificationResult = await emailService.sendEmail({
+      senderName: "SI<3>",
+      senderEmail: emailService.getSenderEmail("partner"),
+      toName: "SI<3> Team",
+      toEmail: "kara@si3.space",
+      subject: `New SI<3> Partner Inquiry: ${data.name} - ${
+        data.companyName || "Company Name"
+      }`,
+      htmlContent: adminNotificationHtml,
+      emailType: "partner",
+    });
+
+    // Generate confirmation email content for the applicant
+    const applicantConfirmationHtml = partnerReplyTemplate(data);
+
+    // Send confirmation email to the applicant using Partners SMTP
+    const applicantConfirmationResult = await emailService.sendEmail({
+      senderName: "SI<3> Partners",
+      senderEmail: emailService.getSenderEmail("partner"),
+      toName: data.name,
+      toEmail: data.email,
+      subject: "Thank you for your inquiry!",
+      htmlContent: applicantConfirmationHtml,
+      emailType: "partner",
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Partner program submission saved and emails sent successfully",
+      result: {
+        adminNotification: adminNotificationResult,
+        applicantConfirmation: applicantConfirmationResult,
+      },
+      note: "Database save was skipped due to connection issues",
     });
   }
 );
@@ -605,7 +712,7 @@ export const sendGuideSubmissionEmail = catchAsync(
     const data = formData as GuideFormData;
 
     // Save to database
-    // await Guide.create(formData);
+    await Guide.create(formData);
 
     // Generate notification email content for internal team (admin)
     const adminNotificationHtml = guidesSubmissionTemplate(data);
@@ -616,7 +723,7 @@ export const sendGuideSubmissionEmail = catchAsync(
       senderEmail: emailService.getSenderEmail("guide"),
       toName: "SI<3> Team",
       toEmail: "kara@si3.space",
-      subject: `New Guide Application: ${data.name}`,
+      subject: `New Si Her Guide Application: ${data.name}`,
       htmlContent: adminNotificationHtml,
       emailType: "guide",
     });
@@ -626,11 +733,11 @@ export const sendGuideSubmissionEmail = catchAsync(
 
     // Send confirmation email to the applicant using Guides SMTP
     const applicantConfirmationResult = await emailService.sendEmail({
-      senderName: "SI<3> Guides Program",
+      senderName: "SI<3> Guides",
       senderEmail: emailService.getSenderEmail("guide"),
       toName: data.name,
       toEmail: data.email,
-      subject: "Your Guide Application Has Been Received",
+      subject: "Thank you for your applying to be a Si Her Guide!",
       htmlContent: applicantConfirmationHtml,
       emailType: "guide",
     });
@@ -642,112 +749,6 @@ export const sendGuideSubmissionEmail = catchAsync(
         adminNotification: adminNotificationResult,
         applicantConfirmation: applicantConfirmationResult,
       },
-    });
-  }
-);
-/**
- * Send partner program submission email using Partners SMTP
- *
- * @route   POST /api/email/partners-program
- * @desc    Process partner program form submission, save to database, and send notification email
- * @access  Public
- * @method  POST
- * @validation Uses validatePartnerSubmission middleware
- *
- * @param   {Object} req.body - Request body
- * @param   {Object} req.body.formData - Form data object (required)
- * @param   {string} req.body.formData.name - Full name (required, 2-100 chars)
- * @param   {string} req.body.formData.email - Email address (required, valid email)
- * @param   {string} req.body.formData.companyName - Company name (required, 2-200 chars)
- * @param   {string[]|string} req.body.formData.interests - Interests array or string (required)
- * @param   {string} [req.body.formData.details] - Additional details (optional, max 1000 chars)
- * @param   {boolean} req.body.formData.newsletter - Newsletter subscription preference (required)
- *
- * @returns {Object} Response object
- * @returns {string} returns.status - "success" or "error"
- * @returns {string} returns.message - Success message
- * @returns {Object} returns.result - Email sending result
- *
- * @throws  {AppError} 400 - Missing form data, email, name, or validation errors
- * @throws  {AppError} 500 - Database save error
- * @throws  {AppError} 503 - Email service unavailable
- *
- * @example
- * // Request
- * POST /api/email/partners-program
- * {
- *   "formData": {
- *     "name": "Alex Johnson",
- *     "email": "alex@techcorp.com",
- *     "companyName": "TechCorp Solutions",
- *     "interests": ["Partnership", "Collaboration", "Innovation"],
- *     "details": "We are interested in exploring partnership opportunities...",
- *     "newsletter": true
- *   }
- * }
- *
- * // Response
- * {
- *   "status": "success",
- *   "message": "Partner program submission saved and email sent successfully",
- *   "result": {
- *     "success": true,
- *     "messageId": "partner456-def012",
- *     "smtpUsed": "partners"
- *   }
- * }
- */
-
-export const sendPartnerProgramSubmissionEmail = catchAsync(
-  async (req: FormSubmissionRequest, res: Response, next: NextFunction) => {
-    const { formData } = req.body;
-
-    if (!formData || !formData.email || !formData.name) {
-      return next(new AppError("Missing form data, email, or name", 400));
-    }
-
-    const data = formData as PartnerFormData;
-
-    // await PartnerProgramModel.create(data);
-
-    // Generate notification email content for internal team (admin)
-    const adminNotificationHtml = partnerSubmissionTemplate(data);
-
-    // Send notification email to admin using Partners SMTP
-    const adminNotificationResult = await emailService.sendEmail({
-      senderName: "SI<3>",
-      senderEmail: emailService.getSenderEmail("partner"),
-      toName: "SI<3> Team",
-      toEmail: "kara@si3.space",
-      subject: `New Partnership Application: ${data.name} - ${
-        data.companyName || "Company Name"
-      }`,
-      htmlContent: adminNotificationHtml,
-      emailType: "partner",
-    });
-
-    // Generate confirmation email content for the applicant
-    const applicantConfirmationHtml = partnerReplyTemplate(data);
-
-    // Send confirmation email to the applicant using Partners SMTP
-    const applicantConfirmationResult = await emailService.sendEmail({
-      senderName: "SI<3> Partnerships",
-      senderEmail: emailService.getSenderEmail("partner"),
-      toName: data.name,
-      toEmail: data.email,
-      subject: "Your Partnership Application Has Been Received",
-      htmlContent: applicantConfirmationHtml,
-      emailType: "partner",
-    });
-
-    res.status(200).json({
-      status: "success",
-      message: "Partner program submission saved and emails sent successfully",
-      result: {
-        adminNotification: adminNotificationResult,
-        applicantConfirmation: applicantConfirmationResult,
-      },
-      note: "Database save was skipped due to connection issues",
     });
   }
 );

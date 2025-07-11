@@ -13,10 +13,10 @@ export enum Platform {
 }
 
 export enum UserRole {
-  SCHOLAR = "scholar",
-  GUIDE = "guide",
-  PARTNER = "partner",
   ADMIN = "admin",
+  GUIDE = "guide",
+  SCHOLAR = "scholar",
+  PARTNER = "partner",
 }
 
 // Interface for digital link subdocument

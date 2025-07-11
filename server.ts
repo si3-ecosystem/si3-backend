@@ -10,6 +10,8 @@ import { mainMiddleware } from "./middleware/mainMiddleware";
 import emailRouter from "./routes/emailRoutes";
 
 import redis from "./config/redis";
+import { checkConnection, connectDB } from "./config/db";
+
 import redisHelper from "./helpers/redisHelper";
 
 // Load environment variables
@@ -42,18 +44,20 @@ app.get("/", (req: Request, res: Response) => {
     message: "SI3 Backend API",
     version: "1.0.0",
     status: "active",
-    docs: "/api"
+    docs: "/api",
   });
 });
 
 // Health check endpoint
 app.get("/health", async (req: Request, res: Response) => {
   const redisStatus = redis.status === "ready";
+  const dbStatus = checkConnection();
 
   res.status(200).json({
     status: "success",
     services: {
       redis: redisStatus ? "connected" : "disconnected",
+      mongodb: dbStatus.isConnected ? "connected" : "disconnected",
     },
   });
 });
@@ -78,6 +82,8 @@ app.use(globalErrorHandler);
 // Start server
 const startServer = async (): Promise<void> => {
   try {
+    await connectDB();
+
     // Start server
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

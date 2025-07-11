@@ -2,34 +2,34 @@ import nodemailer, { Transporter } from "nodemailer";
 
 // Types
 export interface EmailConfig {
-  username: string;
   token: string;
+  username: string;
 }
 
 export interface EmailOptions {
-  senderName: string;
-  senderEmail: string;
+  cc?: string[];
+  bcc?: string[];
   toName: string;
   toEmail: string;
   subject: string;
+  senderName: string;
+  senderEmail: string;
   htmlContent: string;
-  cc?: string[];
-  bcc?: string[];
   emailType?: EmailType;
 }
 
 export interface EmailResult {
   success: boolean;
-  messageId: string;
-  response?: string;
   smtpUsed: string;
+  response?: string;
+  messageId: string;
 }
 
 export interface BulkEmailResult {
   email: string;
+  error?: string;
   success: boolean;
   messageId?: string;
-  error?: string;
 }
 
 export type EmailType =
@@ -52,8 +52,8 @@ const EMAIL_TYPE_MAPPING: Record<EmailType, string> = {
 const SENDER_EMAIL_MAPPING: Record<EmailType, string> = {
   basic: "kara@si3.space",
   guide: "guides@si3.space",
-  partner: "partners@si3.space",
   diversity: "kara@si3.space",
+  partner: "partners@si3.space",
   scholars: "scholars@si3.space",
 };
 
@@ -69,14 +69,17 @@ class EmailService {
         username: process.env.SMTP_USERNAME_KARA || "",
         token: process.env.SMTP_TOKEN_KARA || "",
       },
+
       partners: {
         username: process.env.SMTP_USERNAME_PARTNERS || "",
         token: process.env.SMTP_TOKEN_PARTNERS || "",
       },
+
       guides: {
         username: process.env.SMTP_USERNAME_GUIDES || "",
         token: process.env.SMTP_TOKEN_GUIDES || "",
       },
+
       scholars: {
         username: process.env.SMTP_USERNAME_SCHOLARS || "",
         token: process.env.SMTP_TOKEN_SCHOLARS || "",
