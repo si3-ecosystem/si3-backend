@@ -10,7 +10,6 @@ export const validateEmailOTP = [
     .isLength({ max: 254 })
     .withMessage("Email address is too long"),
 ];
-
 // OTP verification validation
 export const validateOTPVerification = [
   body("email")
