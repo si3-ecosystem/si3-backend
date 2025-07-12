@@ -498,6 +498,16 @@ export const sendScholarsSubmissionEmail = catchAsync(
         : [data.interests],
     };
 
+    // Check if email already exists
+    const existingScholar = await ScholarsProgramModel.findOne({
+      email: data.email,
+    });
+    if (existingScholar) {
+      return next(
+        new AppError("A scholar with this email already exists", 400)
+      );
+    }
+
     // Save to database
     await ScholarsProgramModel.create(scholarData);
 
@@ -603,6 +613,16 @@ export const sendPartnerSubmissionEmail = catchAsync(
     }
 
     const data = formData as PartnerFormData;
+
+    // Check if email already exists
+    const existingPartner = await PartnerProgramModel.findOne({
+      email: data.email,
+    });
+    if (existingPartner) {
+      return next(
+        new AppError("A partner with this email already exists", 400)
+      );
+    }
 
     await PartnerProgramModel.create(data);
 
@@ -710,6 +730,12 @@ export const sendGuideSubmissionEmail = catchAsync(
     }
 
     const data = formData as GuideFormData;
+
+    // Check if email already exists
+    const existingGuide = await Guide.findOne({ email: data.email });
+    if (existingGuide) {
+      return next(new AppError("A guide with this email already exists", 400));
+    }
 
     // Save to database
     await Guide.create(formData);
