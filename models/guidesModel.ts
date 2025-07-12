@@ -9,7 +9,6 @@ export interface IGuide extends Document {
   personalValues: string;
   digitalLink: string;
 
-  // Metadata
   createdAt: Date;
   updatedAt: Date;
 }
