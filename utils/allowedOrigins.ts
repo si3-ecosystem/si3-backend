@@ -5,7 +5,7 @@ const allowedOrigins: string[] = [
 ];
 
 // Add development origins based on environment
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV === "development") {
   allowedOrigins.push("http://localhost:3000", "http://localhost:8080");
 }
 
