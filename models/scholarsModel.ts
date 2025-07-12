@@ -84,6 +84,7 @@ scholarsProgramSchema.pre("save", function (next) {
 
 // Error handling for duplicate email
 scholarsProgramSchema.post("save", function (error: any, doc: any, next: any) {
+  console.log("Error in scholarsProgramSchema.post:", error);
   if (error.name === "MongoServerError" && error.code === 11000) {
     const duplicateError = new Error(
       "A scholar with this email already exists"
