@@ -113,6 +113,7 @@ class AuthUtils {
       status: "success",
       message,
       data: {
+        token,
         user: userResponse,
       },
     });

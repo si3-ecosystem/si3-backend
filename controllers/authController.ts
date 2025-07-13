@@ -1,11 +1,20 @@
-import { Request, Response, NextFunction } from "express";
 import { ethers } from "ethers";
+import { Request, Response, NextFunction } from "express";
+
 import UserModel, { IUser, UserRole } from "../models/usersModel";
-import authUtils from "../utils/authUtils";
-import AppError from "../utils/AppError";
-import redisHelper from "../helpers/redisHelper";
+
 import emailService from "../config/protonMail";
-import { otpEmailTemplate } from "../utils/emailTemplates";
+
+import redisHelper from "../helpers/redisHelper";
+
+import AppError from "../utils/AppError";
+import authUtils from "../utils/authUtils";
+import catchAsync from "../utils/catchAsync";
+import {
+  loginAlertEmailTemplate,
+  otpEmailTemplate,
+  welcomeEmailTemplate,
+} from "../utils/emailTemplates";
 
 // Constants for Redis keys and TTL
 const OTP_KEY_PREFIX = "auth:otp:";
@@ -20,12 +29,8 @@ const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "60", 10);
  * Send OTP to email for passwordless login
  */
 
-export const sendEmailOTP = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+export const sendEmailOTP = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email } = req.body;
 
     // Rate limiting
@@ -69,20 +74,15 @@ export const sendEmailOTP = async (
         expiresIn: OTP_TTL_SECONDS,
       },
     });
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Verify OTP and login/register user
  */
-export const verifyEmailOTP = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const verifyEmailOTP = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email, otp } = req.body;
 
     // Get OTP from Redis
@@ -93,7 +93,7 @@ export const verifyEmailOTP = async (
       return next(AppError.badRequest("OTP has expired or is invalid"));
     }
 
-    if (storedOTP !== otp) {
+    if (Number(storedOTP) !== Number(otp)) {
       return next(AppError.badRequest("Invalid OTP"));
     }
 
@@ -104,44 +104,72 @@ export const verifyEmailOTP = async (
     let user = await UserModel.findOne({ email });
     let isNewUser = false;
 
+    const loginTime = new Date().toISOString();
+    const ip = req.headers["x-forwarded-for"] || "Unknown";
+
     if (!user) {
-      // Create new user
       user = new UserModel({
         email,
         isVerified: true,
-        roles: [UserRole.SCHOLAR], // Default role
         lastLogin: new Date(),
+        roles: [UserRole.SCHOLAR],
       });
+
       await user.save();
       isNewUser = true;
+
+      // Send welcome email
+      const welcomeHtml = welcomeEmailTemplate();
+
+      await emailService.sendEmail({
+        senderName: "SI U Team",
+        senderEmail: emailService.getSenderEmail("basic"),
+        toName: email,
+        toEmail: email,
+        subject: "Welcome to SI U",
+        htmlContent: welcomeHtml,
+        emailType: "basic",
+      });
     } else {
-      // Update existing user
       user.isVerified = true;
       user.lastLogin = new Date();
       await user.save({ validateBeforeSave: false });
+
+      // Send login alert
+      const loginHtml = loginAlertEmailTemplate({
+        email,
+        time: loginTime,
+        location: "Unknown",
+        ipAddress: Array.isArray(ip) ? ip[0] : ip,
+      });
+
+      await emailService.sendEmail({
+        senderName: "SI U Security",
+        senderEmail: emailService.getSenderEmail("basic"),
+        toName: email,
+        toEmail: email,
+        subject: "New Login Detected",
+        htmlContent: loginHtml,
+        emailType: "basic",
+      });
     }
 
-    // Generate and send token
+    // Finally generate and send token
     authUtils.createSendToken(
       user,
       200,
       res,
       isNewUser ? "Account created successfully" : "Login successful"
     );
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Request wallet signature message
  */
-export const requestWalletSignature = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const requestWalletSignature = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { wallet_address } = req.body;
 
     // Rate limiting
@@ -175,20 +203,15 @@ export const requestWalletSignature = async (
         expiresIn: NONCE_TTL_SECONDS,
       },
     });
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Verify wallet signature and login/register user
  */
-export const verifyWalletSignature = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const verifyWalletSignature = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { wallet_address, signature } = req.body;
 
     // Get nonce from Redis
@@ -247,20 +270,15 @@ export const verifyWalletSignature = async (
       res,
       isNewUser ? "Account created successfully" : "Login successful"
     );
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Connect wallet to existing user account
  */
-export const connectWallet = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const connectWallet = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { wallet_address, signature } = req.body;
     const user = req.user as IUser;
 
@@ -309,20 +327,15 @@ export const connectWallet = async (
 
     // Generate new token with updated user data
     authUtils.createSendToken(user, 200, res, "Wallet connected successfully");
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Disconnect wallet from user account
  */
-export const disconnectWallet = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const disconnectWallet = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
 
     if (!user.wallet_address) {
@@ -340,20 +353,15 @@ export const disconnectWallet = async (
       res,
       "Wallet disconnected successfully"
     );
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Logout user
  */
-export const logout = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const logout = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // Clear authentication cookie
     authUtils.clearAuthCookie(res);
 
@@ -361,20 +369,15 @@ export const logout = async (
       status: "success",
       message: "Logged out successfully",
     });
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Get current user profile
  */
-export const getMe = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const getMe = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
 
     const userResponse = {
@@ -401,20 +404,15 @@ export const getMe = async (
         user: userResponse,
       },
     });
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Update user profile
  */
-export const updateProfile = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const updateProfile = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
     const allowedFields = [
       "companyName",
@@ -446,20 +444,15 @@ export const updateProfile = async (
 
     // Generate new token with updated user data
     authUtils.createSendToken(user, 200, res, "Profile updated successfully");
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Refresh authentication token
  */
-export const refreshToken = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const refreshToken = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
 
     // Update last login
@@ -468,20 +461,15 @@ export const refreshToken = async (
 
     // Generate new token
     authUtils.createSendToken(user, 200, res, "Token refreshed successfully");
-  } catch (error) {
-    next(error);
   }
-};
+);
 
 /**
  * Check authentication status
  */
-export const checkAuth = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
+
+export const checkAuth = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const token = authUtils.extractToken(
       req.headers.authorization as string,
       req.cookies
@@ -533,7 +521,5 @@ export const checkAuth = async (
         },
       });
     }
-  } catch (error) {
-    next(error);
   }
-};
+);

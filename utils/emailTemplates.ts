@@ -226,3 +226,22 @@ export const otpEmailTemplate = (otp: string, email: string): string => {
   } minutes</p> <div class="warning"> 🔐 <strong>Security Tip:</strong> This code is private. Never share it with anyone. </div> </div> <div class="footer"> SI&lt;3&gt; • <a href="https://si3.space" target="_blank">si3.space</a> </div> </div> </body></html>
   `;
 };
+
+export const welcomeEmailTemplate = () => {
+  return `
+     <!DOCTYPE html><html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1" /> <title>Welcome to SI U</title> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@500;700&display=swap" rel="stylesheet" /> <style> body { margin: 0; padding: 0; background-color: #f4f4f4; font-family: "Inter", Arial, sans-serif; } .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e0d5ff; } .header { background: linear-gradient( 121.07deg, #211257 5.49%, #4c1192 48.19%, #790eb4 75.74%, #8a04c5 86.22% ); color: #fff; padding: 24px; text-align: center; } .header h1 { margin: 0; font-family: "Montserrat", sans-serif; font-size: 24px; font-weight: 700; } .content { padding: 30px; color: #333; } .content p { font-size: 16px; line-height: 1.6; margin: 0 0 20px; color: #555; } .footer { text-align: center; font-size: 13px; color: #999; padding: 20px; } </style> </head> <body> <div class="email-container"> <div class="header"> <h1>Welcome to SI U</h1> </div> <div class="content"> <p>Hi there,</p> <p>We’re thrilled you’ve joined the SI U ecosystem.</p> <p> Whether you’re a Scholar, a Guide, a Partner, or just exploring the decentralized future — you’re now part of a growing community building something meaningful. </p> <p> Make the most of your journey by connecting with others, asking questions, and sharing your ideas. </p> <p><strong>Onward,</strong><br />The SI U Team</p> </div> <div class="footer"> This is an automated email. If you didn’t sign up, you can safely ignore this message.<br /> Visit us at <a href="https://si3.space">si3.space</a> </div> </div> </body></html>
+  `;
+};
+
+export const loginAlertEmailTemplate = (params: {
+  email: string;
+  time: string;
+  location?: string;
+  ipAddress?: string;
+}): string => {
+  const { email, time, location = "Unknown", ipAddress = "Unknown" } = params;
+
+  return `
+     <!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1" /> <title>SI U Login Alert</title> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@500;700&display=swap" rel="stylesheet" /> <style> body { margin: 0; padding: 0; background-color: #f4f4f4; font-family: "Inter", Arial, sans-serif; } .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e0d5ff; } .header { background: linear-gradient(121.07deg, #211257 5.49%, #4C1192 48.19%, #790EB4 75.74%, #8A04C5 86.22%); color: #fff; padding: 24px; text-align: center; } .header h1 { margin: 0; font-family: "Montserrat", sans-serif; font-size: 24px; font-weight: 700; } .content { padding: 30px; color: #333; } .content p { font-size: 16px; line-height: 1.6; margin: 0 0 20px; color: #555; } .info-box { background-color: #f9f9f9; border-left: 4px solid #8A04C5; padding: 16px; border-radius: 8px; font-size: 15px; margin-top: 20px; } .footer { text-align: center; font-size: 13px; color: #999; padding: 20px; } </style> </head> <body> <div class="email-container"> <div class="header"> <h1>Login Detected</h1> </div> <div class="content"> <p>Hi <strong>${email}</strong>,</p> <p>A new login to your SI U account was just detected.</p> <div class="info-box"> <strong>Time:</strong> ${time}<br/> <strong>Location:</strong> ${location}<br/> <strong>IP Address:</strong> ${ipAddress} </div> <p>If this was you, no action is needed.</p> <p>If you don’t recognize this activity, please reset your password or contact our team immediately.</p> </div> <div class="footer"> This is an automated alert. Questions? Contact us at <a href="mailto:scholars@si3.space">scholars@si3.space</a> </div> </div> </body> </html>
+  `;
+};
