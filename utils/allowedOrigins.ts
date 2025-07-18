@@ -4,6 +4,7 @@ const allowedOrigins: string[] = [
   "https://www.si3.space",
   "https://si3-dashboard.vercel.app",
   "https://si3-backend-one.vercel.app",
+  "https://si3-dashboard-nine.vercel.app",
 ];
 
 // Add development origins based on environment

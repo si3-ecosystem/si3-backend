@@ -11,9 +11,9 @@ import AppError from "../utils/AppError";
 import authUtils from "../utils/authUtils";
 import catchAsync from "../utils/catchAsync";
 import {
-  loginAlertEmailTemplate,
   otpEmailTemplate,
   welcomeEmailTemplate,
+  loginAlertEmailTemplate,
 } from "../utils/emailTemplates";
 
 // Constants for Redis keys and TTL
@@ -21,8 +21,8 @@ const OTP_KEY_PREFIX = "auth:otp:";
 const NONCE_KEY_PREFIX = "auth:nonce:";
 const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 
-const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "300", 10); // 5 minutes
-const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "300", 10); // 5 minutes
+const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
+const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
 const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "60", 10); // 1 minute
 
 /**
@@ -186,7 +186,7 @@ export const requestWalletSignature = catchAsync(
 
     // Generate nonce
     const nonce = authUtils.generateNonce();
-    const message = `Sign this message to authenticate with SI3.\n\nNonce: ${nonce}`;
+    const message = `Sign this message to authenticate with SI U\n\nNonce: ${nonce}`;
 
     // Store nonce in Redis
     const nonceKey = `${NONCE_KEY_PREFIX}${wallet_address}`;
@@ -223,7 +223,7 @@ export const verifyWalletSignature = catchAsync(
     }
 
     // Verify signature
-    const expectedMessage = `Sign this message to authenticate with SI3.\n\nNonce: ${storedNonce}`;
+    const expectedMessage = `Sign this message to authenticate with SI U\n\nNonce: ${storedNonce}`;
     let recoveredAddress: string;
 
     try {
@@ -291,7 +291,7 @@ export const connectWallet = catchAsync(
     }
 
     // Verify signature
-    const expectedMessage = `Sign this message to authenticate with SI3.\n\nNonce: ${storedNonce}`;
+    const expectedMessage = `Sign this message to authenticate with SI U\n\nNonce: ${storedNonce}`;
     let recoveredAddress: string;
 
     try {
