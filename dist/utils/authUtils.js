@@ -27,7 +27,15 @@ class AuthUtils {
      */
     getCookieOptions() {
         const isProduction = process.env.NODE_ENV === "production";
-        return Object.assign({ httpOnly: true, sameSite: isProduction ? "none" : "lax", secure: isProduction, maxAge: 7 * 24 * 60 * 60 * 1000, path: "/" }, (process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }));
+        console.log(isProduction);
+        return {
+            httpOnly: true,
+            sameSite: isProduction ? "none" : "lax",
+            secure: isProduction,
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+            path: "/",
+            domain: process.env.COOKIE_DOMAIN || "localhost",
+        };
     }
     /**
      * Set authentication cookie
@@ -40,7 +48,13 @@ class AuthUtils {
      * Clear authentication cookie
      */
     clearAuthCookie(res) {
-        res.clearCookie(this.cookieName, Object.assign({ httpOnly: true, sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", secure: process.env.NODE_ENV === "production", path: "/" }, (process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN })));
+        res.clearCookie(this.cookieName, {
+            httpOnly: true,
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+            domain: process.env.COOKIE_DOMAIN || "localhost",
+        });
     }
     /**
      * Create and send token response
@@ -104,7 +118,7 @@ class AuthUtils {
      * Get expiration time in seconds
      */
     getTokenExpirationSeconds() {
-        const expiration = process.env.JWT_EXPIRES_IN || "7d";
+        const expiration = process.env.JWT_EXPIRES_IN || "30d";
         // Parse time string (e.g., "7d", "24h", "60m")
         const timeValue = parseInt(expiration.slice(0, -1));
         const timeUnit = expiration.slice(-1);

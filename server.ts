@@ -45,6 +45,8 @@ app.get("/", (req: Request, res: Response) => {
     message: "SI3 Backend API",
     version: "1.0.0",
     status: "active",
+    cookieDomain: process.env.COOKIE_DOMAIN,
+    production: process.env.NODE_ENV === "production",
   });
 });
 
@@ -59,6 +61,8 @@ app.get("/health", async (req: Request, res: Response) => {
       redis: redisStatus ? "connected" : "disconnected",
       mongodb: dbStatus.isConnected ? "connected" : "disconnected",
     },
+    cookieDomain: process.env.COOKIE_DOMAIN,
+    production: process.env.NODE_ENV === "production",
   });
 });
 

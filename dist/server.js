@@ -44,6 +44,8 @@ app.get("/", (req, res) => {
         message: "SI3 Backend API",
         version: "1.0.0",
         status: "active",
+        cookieDomain: process.env.COOKIE_DOMAIN,
+        production: process.env.NODE_ENV === "production",
     });
 });
 // Health check endpoint
@@ -56,6 +58,8 @@ app.get("/health", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             redis: redisStatus ? "connected" : "disconnected",
             mongodb: dbStatus.isConnected ? "connected" : "disconnected",
         },
+        cookieDomain: process.env.COOKIE_DOMAIN,
+        production: process.env.NODE_ENV === "production",
     });
 }));
 app.use("/api/auth", authRoutes_1.default);

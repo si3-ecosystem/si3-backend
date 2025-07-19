@@ -46,14 +46,14 @@ class AuthUtils {
    */
   private getCookieOptions(): CookieOptions {
     const isProduction = process.env.NODE_ENV === "production";
-
+    console.log(isProduction);
     return {
       httpOnly: true,
       sameSite: isProduction ? "none" : "lax",
       secure: isProduction,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       path: "/",
-      ...(process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+      domain: process.env.COOKIE_DOMAIN || "localhost",
     };
   }
 
@@ -74,7 +74,7 @@ class AuthUtils {
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      ...(process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+      domain: process.env.COOKIE_DOMAIN || "localhost",
     });
   }
 
@@ -154,7 +154,7 @@ class AuthUtils {
    * Get expiration time in seconds
    */
   getTokenExpirationSeconds(): number {
-    const expiration = process.env.JWT_EXPIRES_IN || "7d";
+    const expiration = process.env.JWT_EXPIRES_IN || "30d";
 
     // Parse time string (e.g., "7d", "24h", "60m")
     const timeValue = parseInt(expiration.slice(0, -1));
