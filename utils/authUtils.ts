@@ -97,16 +97,16 @@ class AuthUtils {
       id: user._id,
       email: user.email,
       roles: user.roles,
-      isVerified: user.isVerified,
-      companyName: user.companyName,
-      companyAffiliation: user.companyAffiliation,
       interests: user.interests,
-      personalValues: user.personalValues,
-      digitalLinks: user.digitalLinks,
-      newsletter: user.newsletter,
-      wallet_address: user.wallet_address,
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
+      isVerified: user.isVerified,
+      newsletter: user.newsletter,
+      companyName: user.companyName,
+      digitalLinks: user.digitalLinks,
+      wallet_address: user.wallet_address,
+      personalValues: user.personalValues,
+      companyAffiliation: user.companyAffiliation,
     };
 
     res.status(statusCode).json({
@@ -170,7 +170,7 @@ class AuthUtils {
       case "s":
         return timeValue;
       default:
-        return 7 * 24 * 60 * 60; // Default to 7 days
+        return 7 * 24 * 60 * 60;
     }
   }
 }
