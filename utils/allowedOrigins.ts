@@ -1,7 +1,8 @@
 const allowedOrigins: string[] = [
   // Production origins
-  "https://si3-backend.vercel.app",
   "https://www.si3.space",
+  "https://app.si3.space",
+  "https://si3-backend.vercel.app",
   "https://si3-dashboard.vercel.app",
   "https://si3-backend-one.vercel.app",
   "https://si3-dashboard-nine.vercel.app",
