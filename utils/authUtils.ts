@@ -46,7 +46,7 @@ class AuthUtils {
    */
   private getCookieOptions(): CookieOptions {
     const isProduction = process.env.NODE_ENV === "production";
-    console.log(isProduction);
+
     return {
       httpOnly: true,
       sameSite: isProduction ? "none" : "lax",

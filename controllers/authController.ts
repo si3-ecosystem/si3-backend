@@ -57,11 +57,11 @@ export const sendEmailOTP = catchAsync(
 
     // In production, integrate with your email service:
     await emailService.sendEmail({
-      senderName: "SI<3> Guides",
+      senderName: "SI U Members",
       senderEmail: emailService.getSenderEmail("basic"),
       toName: email,
       toEmail: email,
-      subject: "OTP for SI<3> login",
+      subject: `${otp}: Your SI U Login Code`,
       htmlContent: applicantConfirmationHtml,
       emailType: "basic",
     });
