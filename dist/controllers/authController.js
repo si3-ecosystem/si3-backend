@@ -82,11 +82,11 @@ exports.sendEmailOTP = (0, catchAsync_1.default)((req, res, next) => __awaiter(v
     const applicantConfirmationHtml = (0, emailTemplates_1.otpEmailTemplate)(otp, email);
     // In production, integrate with your email service:
     yield protonMail_1.default.sendEmail({
-        senderName: "SI<3> Guides",
+        senderName: "SI U Members",
         senderEmail: protonMail_1.default.getSenderEmail("basic"),
         toName: email,
         toEmail: email,
-        subject: "OTP for SI<3> login",
+        subject: `${otp}: Your SI U Login Code`,
         htmlContent: applicantConfirmationHtml,
         emailType: "basic",
     });

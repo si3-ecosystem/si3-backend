@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.allowedOrigins = void 0;
 const allowedOrigins = [
     // Production origins
+    "https://si3.space",
     "https://www.si3.space",
     "https://app.si3.space",
-    "https://si3-backend.vercel.app",
-    "https://si3-dashboard.vercel.app",
+    "https://api.si3.space",
     "https://si3-backend-one.vercel.app",
     "https://si3-dashboard-nine.vercel.app",
 ];

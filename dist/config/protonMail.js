@@ -16,19 +16,19 @@ exports.emailService = void 0;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 // Email type to SMTP mapping
 const EMAIL_TYPE_MAPPING = {
-    basic: "kara",
+    basic: "members",
     guide: "guides",
-    diversity: "kara",
     partner: "partners",
     scholars: "scholars",
+    diversity: "members",
 };
 // Sender email mapping
 const SENDER_EMAIL_MAPPING = {
-    basic: "kara@si3.space",
+    basic: "members@si3.space",
     guide: "guides@si3.space",
-    diversity: "kara@si3.space",
     partner: "partners@si3.space",
     scholars: "scholars@si3.space",
+    diversity: "members@si3.space",
 };
 class EmailService {
     constructor() {
@@ -39,9 +39,9 @@ class EmailService {
      */
     getSMTPConfigs() {
         return {
-            kara: {
-                username: process.env.SMTP_USERNAME_KARA || "",
-                token: process.env.SMTP_TOKEN_KARA || "",
+            members: {
+                username: process.env.SMTP_USERNAME_MEMBERS || "",
+                token: process.env.SMTP_TOKEN_MEMBERS || "",
             },
             partners: {
                 username: process.env.SMTP_USERNAME_PARTNERS || "",
@@ -63,7 +63,7 @@ class EmailService {
     getSMTPConfig(emailType = "basic") {
         // Get fresh config each time (not cached)
         const SMTP_CONFIGS = this.getSMTPConfigs();
-        const smtpKey = EMAIL_TYPE_MAPPING[emailType] || "kara";
+        const smtpKey = EMAIL_TYPE_MAPPING[emailType] || "members";
         const config = SMTP_CONFIGS[smtpKey];
         if (!config.username || !config.token) {
             throw new Error(`Missing SMTP credentials for ${smtpKey}. Check environment variables. Username: ${!!config.username}, Token: ${!!config.token}`);
@@ -238,7 +238,7 @@ class EmailService {
      * Get sender email for email type
      */
     getSenderEmail(emailType) {
-        return SENDER_EMAIL_MAPPING[emailType] || "kara@si3.space";
+        return SENDER_EMAIL_MAPPING[emailType] || "members@si3.space";
     }
     /**
      * Test all SMTP connections
