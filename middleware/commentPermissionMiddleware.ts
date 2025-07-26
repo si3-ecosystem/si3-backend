@@ -20,7 +20,7 @@ export const checkContentAccess = (
     }
 
     // Get content type from request body or query
-    const contentType = req.body.contentType || req.query.contentType;
+    const contentType = req.body?.contentType || req.query.contentType;
 
     if (!contentType) {
       return next(AppError.badRequest("Content type is required"));
@@ -33,6 +33,13 @@ export const checkContentAccess = (
 
     // Get allowed roles for this content type
     const allowedRoles = CONTENT_ACCESS_MAP[contentType as ContentType];
+
+    // Check if user has roles property
+    if (!req.user.roles || !Array.isArray(req.user.roles)) {
+      return next(
+        AppError.unauthorized("User roles not properly configured. Please contact support.")
+      );
+    }
 
     // Check if user has at least one of the required roles
     const hasAccess = req.user.roles.some((userRole) =>
@@ -72,7 +79,7 @@ export const checkCommentPermission = (
       );
     }
 
-    const contentType = req.body.contentType;
+    const contentType = req.body?.contentType;
 
     if (!contentType) {
       return next(AppError.badRequest("Content type is required"));

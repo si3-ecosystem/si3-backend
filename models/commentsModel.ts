@@ -388,14 +388,14 @@ commentSchema.statics.findThreadedComments = function (
           },
           {
             $lookup: {
-              from: "si3users",
+              from: "si3Users",
               localField: "userId",
               foreignField: "_id",
               as: "user",
               pipeline: [{ $project: { email: 1, roles: 1 } }],
             },
           },
-          { $unwind: "$user" },
+          { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
           { $sort: { createdAt: 1 } },
           { $limit: 5 }, // Limit replies per comment for performance
         ],
@@ -404,14 +404,14 @@ commentSchema.statics.findThreadedComments = function (
     },
     {
       $lookup: {
-        from: "si3users",
+        from: "si3Users",
         localField: "userId",
         foreignField: "_id",
         as: "user",
         pipeline: [{ $project: { email: 1, roles: 1 } }],
       },
     },
-    { $unwind: "$user" },
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
     { $sort: { createdAt: -1 } },
     { $skip: skip },
     { $limit: limit },

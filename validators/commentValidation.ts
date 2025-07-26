@@ -8,15 +8,11 @@ export const validateCreateComment = [
     .withMessage("Content ID is required")
     .isLength({ min: 1, max: 100 })
     .withMessage("Content ID must be between 1 and 100 characters")
-    .matches(/^[a-zA-Z0-9\-_]+$/)
+    .matches(/^[a-zA-Z0-9_-]+$/)
     .withMessage("Content ID can only contain alphanumeric characters, hyphens, and underscores")
     .trim(),
 
-  body("contentType")
-    .notEmpty()
-    .withMessage("Content type is required")
-    .isIn(Object.values(ContentType))
-    .withMessage(`Content type must be one of: ${Object.values(ContentType).join(", ")}`),
+  // contentType validation removed - handled in middleware
 
   body("content")
     .notEmpty()
@@ -71,15 +67,11 @@ export const validateGetCommentsByContent = [
     .withMessage("Content ID is required")
     .isLength({ min: 1, max: 100 })
     .withMessage("Content ID must be between 1 and 100 characters")
-    .matches(/^[a-zA-Z0-9\-_]+$/)
+    .matches(/^[a-zA-Z0-9_-]+$/)
     .withMessage("Content ID can only contain alphanumeric characters, hyphens, and underscores")
     .trim(),
 
-  query("contentType")
-    .notEmpty()
-    .withMessage("Content type is required")
-    .isIn(Object.values(ContentType))
-    .withMessage(`Content type must be one of: ${Object.values(ContentType).join(", ")}`),
+  // contentType validation removed - handled in middleware
 
   query("page")
     .optional()

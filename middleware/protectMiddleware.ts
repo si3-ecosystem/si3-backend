@@ -46,9 +46,7 @@ export const protect = async (
     }
 
     // 3) Check if user still exists
-    const currentUser = await UserModel.findById(decoded._id).select(
-      "+lastLogin"
-    );
+    const currentUser = await UserModel.findById(decoded._id);
     if (!currentUser) {
       return next(
         AppError.unauthorized(
