@@ -9,6 +9,7 @@ import { mainMiddleware } from "./middleware/mainMiddleware";
 
 import authRouter from "./routes/authRoutes";
 import emailRouter from "./routes/emailRoutes";
+import commentRouter from "./routes/commentRoutes";
 
 import redis from "./config/redis";
 import { checkConnection, connectDB } from "./config/db";
@@ -68,6 +69,7 @@ app.get("/health", async (req: Request, res: Response) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/email", emailRouter);
+app.use("/api/comments", commentRouter);
 
 // Handle 404 errors
 app.use(notFoundHandler);

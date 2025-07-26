@@ -1,0 +1,403 @@
+{
+  "info": {
+    "name": "SI3 Comments API",
+    "description": "Complete collection for testing all comment-related features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "{{authToken}}",
+      "type": "string"
+    },
+    {
+      "key": "commentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contentId",
+      "value": "test-content-123",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Create Comments",
+      "item": [
+        {
+          "name": "Create Top-Level Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentId\": \"{{contentId}}\",\n  \"contentType\": \"guide_session\",\n  \"content\": \"This is a test comment for the guide session content.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('commentId', response.data.comment._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Reply Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentId\": \"{{contentId}}\",\n  \"contentType\": \"guide_session\",\n  \"content\": \"This is a reply to the previous comment.\",\n  \"parentCommentId\": \"{{commentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Get Comments",
+      "item": [
+        {
+          "name": "Get Comments by Content",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/content?contentId={{contentId}}&contentType=guide_session&page=1&limit=20&includeReplies=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "content"],
+              "query": [
+                {
+                  "key": "contentId",
+                  "value": "{{contentId}}"
+                },
+                {
+                  "key": "contentType",
+                  "value": "guide_session"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "includeReplies",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Threaded Comments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/content/threaded?contentId={{contentId}}&contentType=guide_session&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "content", "threaded"],
+              "query": [
+                {
+                  "key": "contentId",
+                  "value": "{{contentId}}"
+                },
+                {
+                  "key": "contentType",
+                  "value": "guide_session"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Comment",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Comment Replies",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/replies?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}", "replies"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Comments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/my-comments?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "my-comments"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Update & Delete Comments",
+      "item": [
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This is an updated comment content.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Comment Reactions",
+      "item": [
+        {
+          "name": "Add Like Reaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"like\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/react",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}", "react"]
+            }
+          }
+        },
+        {
+          "name": "Add Dislike Reaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"dislike\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/react",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}", "react"]
+            }
+          }
+        },
+        {
+          "name": "Remove Reaction",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/react",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}", "react"]
+            }
+          }
+        },
+        {
+          "name": "Get My Reaction",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/my-reaction",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}", "my-reaction"]
+            }
+          }
+        },
+        {
+          "name": "Get Reaction Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/reactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "{{commentId}}", "reactions"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Comment Statistics",
+      "item": [
+        {
+          "name": "Get Content Comment Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/content/stats?contentId={{contentId}}&contentType=guide_session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "content", "stats"],
+              "query": [
+                {
+                  "key": "contentId",
+                  "value": "{{contentId}}"
+                },
+                {
+                  "key": "contentType",
+                  "value": "guide_session"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
