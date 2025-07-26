@@ -373,7 +373,7 @@ commentSchema.statics.findThreadedComments = function (
     },
     {
       $lookup: {
-        from: "si3comments",
+        from: "si3Comments",
         let: { commentId: "$_id" },
         pipeline: [
           {
@@ -382,6 +382,7 @@ commentSchema.statics.findThreadedComments = function (
                 $and: [
                   { $eq: ["$parentCommentId", "$$commentId"] },
                   { $eq: ["$isDeleted", false] },
+                  { $eq: ["$isReply", true] },
                 ],
               },
             },
