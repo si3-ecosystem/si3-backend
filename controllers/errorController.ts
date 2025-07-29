@@ -113,9 +113,9 @@ export const globalErrorHandler = (
     // Convert unknown errors to AppError
     error = new AppError(
       process.env.NODE_ENV === "development"
-        ? err.message
+        ? (err?.message || "Unknown error")
         : "Something went wrong!",
-      err.statusCode || 500,
+      err?.statusCode || 500,
       "INTERNAL_SERVER_ERROR"
     );
   }
