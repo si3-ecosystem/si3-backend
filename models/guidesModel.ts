@@ -9,7 +9,6 @@ export interface IGuide extends Document {
   personalValues: string;
   digitalLink: string;
 
-  // Metadata
   createdAt: Date;
   updatedAt: Date;
 }
@@ -112,8 +111,12 @@ guideSchema.pre("save", function (next) {
 
 // Error handling for duplicate email
 guideSchema.post("save", function (error: any, doc: any, next: any) {
+  console.log("Error in guideSchema.post:", error);
   if (error.name === "MongoServerError" && error.code === 11000) {
-    next(new Error("A guide with this email already exists"));
+    const duplicateError = new Error("A guide with this email already exists");
+    duplicateError.name = "ValidationError";
+    (duplicateError as any).statusCode = 400;
+    next(duplicateError);
   } else {
     next(error);
   }

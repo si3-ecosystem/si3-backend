@@ -4,8 +4,8 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IScholarsProgram extends Document {
   name: string;
   email: string;
-  interests: string[];
   details?: string;
+  interests: string[];
   newsletter: boolean;
 
   // Metadata
@@ -61,7 +61,7 @@ const scholarsProgramSchema = new Schema<IScholarsProgram>(
   },
   {
     timestamps: true,
-    collection: "scholarsPrograms",
+    collection: "scholars",
   }
 );
 
@@ -84,8 +84,14 @@ scholarsProgramSchema.pre("save", function (next) {
 
 // Error handling for duplicate email
 scholarsProgramSchema.post("save", function (error: any, doc: any, next: any) {
+  console.log("Error in scholarsProgramSchema.post:", error);
   if (error.name === "MongoServerError" && error.code === 11000) {
-    next(new Error("A scholar with this email already exists"));
+    const duplicateError = new Error(
+      "A scholar with this email already exists"
+    );
+    duplicateError.name = "ValidationError";
+    (duplicateError as any).statusCode = 400;
+    next(duplicateError);
   } else {
     next(error);
   }
@@ -93,7 +99,7 @@ scholarsProgramSchema.post("save", function (error: any, doc: any, next: any) {
 
 // Create and export model
 const ScholarsProgramModel = mongoose.model<IScholarsProgram>(
-  "ScholarsProgram",
+  "Scholar",
   scholarsProgramSchema
 );
 

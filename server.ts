@@ -7,9 +7,12 @@ import {
 } from "./controllers/errorController";
 import { mainMiddleware } from "./middleware/mainMiddleware";
 
+import authRouter from "./routes/authRoutes";
 import emailRouter from "./routes/emailRoutes";
+import commentRouter from "./routes/commentRoutes";
 
 import redis from "./config/redis";
+import { checkConnection, connectDB } from "./config/db";
 
 import redisHelper from "./helpers/redisHelper";
 
@@ -37,28 +40,36 @@ redis.on("connect", () => {
   console.log("✅ Successfully connected to Redis");
 });
 
+// Root route
+app.get("/", (req: Request, res: Response) => {
+  res.json({
+    message: "SI3 Backend API",
+    version: "1.0.0",
+    status: "active",
+    cookieDomain: process.env.COOKIE_DOMAIN,
+    production: process.env.NODE_ENV === "production",
+  });
+});
+
 // Health check endpoint
 app.get("/health", async (req: Request, res: Response) => {
   const redisStatus = redis.status === "ready";
+  const dbStatus = checkConnection();
 
   res.status(200).json({
     status: "success",
     services: {
       redis: redisStatus ? "connected" : "disconnected",
+      mongodb: dbStatus.isConnected ? "connected" : "disconnected",
     },
+    cookieDomain: process.env.COOKIE_DOMAIN,
+    production: process.env.NODE_ENV === "production",
   });
 });
 
-// API root
-app.get("/api", (req: Request, res: Response) => {
-  res.json({
-    message: "SI3 Backend API",
-    version: "v1",
-    status: "active",
-  });
-});
-
+app.use("/api/auth", authRouter);
 app.use("/api/email", emailRouter);
+app.use("/api/comments", commentRouter);
 
 // Handle 404 errors
 app.use(notFoundHandler);
@@ -69,12 +80,13 @@ app.use(globalErrorHandler);
 // Start server
 const startServer = async (): Promise<void> => {
   try {
+    await connectDB();
+
     // Start server
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Environment: ${process.env.NODE_ENV || "development"}`);
       console.log(`🔗 Health: http://localhost:${PORT}/health`);
-      console.log(`📊 API: http://localhost:${PORT}/api`);
     });
 
     // Graceful shutdown

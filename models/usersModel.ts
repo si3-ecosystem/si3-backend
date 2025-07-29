@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
 
 // Enums for type safety
 export enum Platform {
@@ -13,10 +13,10 @@ export enum Platform {
 }
 
 export enum UserRole {
-  SCHOLAR = "scholar",
-  GUIDE = "guide",
-  PARTNER = "partner",
   ADMIN = "admin",
+  GUIDE = "guide",
+  SCHOLAR = "scholar",
+  PARTNER = "partner",
 }
 
 // Interface for digital link subdocument
@@ -27,18 +27,19 @@ export interface IDigitalLink {
 
 // Interface for the user document
 export interface IUser extends Document {
+  _id: Types.ObjectId;
   email: string;
-  isVerified: boolean;
   lastLogin?: Date;
-  wallet_address?: string;
-  roles: UserRole[];
-  companyAffiliation?: string;
-  interests: string[];
-  personalValues: string[];
-  digitalLinks: IDigitalLink[];
-  companyName?: string;
   details?: string;
+  roles: UserRole[];
+  isVerified: boolean;
   newsletter: boolean;
+  interests: string[];
+  companyName?: string;
+  wallet_address?: string;
+  personalValues: string[];
+  companyAffiliation?: string;
+  digitalLinks: IDigitalLink[];
 
   // Metadata
   createdAt: Date;
@@ -91,7 +92,6 @@ const userSchema = new Schema<IUser>(
         },
         message: "Please provide a valid email address",
       },
-      unique: true,
     },
 
     isVerified: {

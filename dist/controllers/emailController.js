@@ -1,107 +1,25 @@
-import { Request, Response, NextFunction } from "express";
-
-import Guide from "../models/guidesModel";
-import PartnerProgramModel from "../models/partnersModel";
-import ScholarsProgramModel from "../models/scholarsModel";
-
-import catchAsync from "../utils/catchAsync";
-
-import emailService, { EmailType } from "../config/protonMail";
-
-import {
-  guidesReplyTemplate,
-  partnerReplyTemplate,
-  scholarsReplyTemplate,
-  guidesSubmissionTemplate,
-  diversityTrackerTemplate,
-  partnerSubmissionTemplate,
-  scholarsSubmissionTemplate,
-} from "../utils/emailTemplates";
-import AppError from "../utils/AppError";
-
-interface FormSubmissionRequest extends Request {
-  body: {
-    formData: any;
-  };
-}
-
-interface ScholarsFormData {
-  name: string;
-  email: string;
-  details?: string;
-  interests: string[] | string;
-  newsletter: string | boolean;
-}
-
-interface GuideFormData {
-  name: string;
-  email: string;
-  interests: string[];
-  digitalLink: string;
-  daoInterests: string;
-  personalValues: string;
-}
-
-interface PartnerFormData {
-  name: string;
-  email: string;
-  details?: string;
-  companyName: string;
-  newsletter: boolean;
-  interests: string[] | string;
-}
-
-interface DiversityFormData {
-  ageRange: string;
-  ethnicity: string;
-  disability: string;
-  equityScale: string;
-  grantRound?: string;
-  hasRoadmap: boolean;
-  diverseTeam: string;
-  uniqueValue: string;
-  selfIdentity: string;
-  suggestions?: string;
-  marketImpact: string;
-  grantProvider?: string;
-  grantExperience?: string;
-  sexualOrientation: string;
-  reportsFinancials: boolean;
-  runsGrantPrograms: boolean;
-  selfIdentityCustom?: string;
-  claritySuggestions?: string;
-  engagementChannels: string[];
-  diversityInitiatives: string;
-  improvementSuggestions?: string;
-  grantRoundParticipation?: string;
-  activeGrantsParticipated?: string;
-  underrepresentedLeadership: string;
-  highlightsUnderrepresented: string;
-  offeringClear: "Yes" | "No" | "Somewhat";
-  decentralizedDecisionMaking: "Yes" | "No" | "Unsure";
-}
-
-interface BulkEmailRequest extends Request {
-  body: {
-    subject: string;
-    htmlContent: string;
-    senderName?: string;
-    emailType?: EmailType;
-    recipients: Array<{ email: string; name?: string }>;
-  };
-}
-
-interface BasicEmailRequest extends Request {
-  body: {
-    cc?: string[];
-    toName: string;
-    bcc?: string[];
-    toEmail: string;
-    subject: string;
-    htmlContent: string;
-  };
-}
-
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.sendGuideSubmissionEmail = exports.sendPartnerSubmissionEmail = exports.sendScholarsSubmissionEmail = exports.sendDiversityTrackerSubmissionEmail = exports.sendBulkEmail = exports.sendBasicEmail = exports.getSMTPStatus = void 0;
+const guidesModel_1 = __importDefault(require("../models/guidesModel"));
+const partnersModel_1 = __importDefault(require("../models/partnersModel"));
+const scholarsModel_1 = __importDefault(require("../models/scholarsModel"));
+const catchAsync_1 = __importDefault(require("../utils/catchAsync"));
+const protonMail_1 = __importDefault(require("../config/protonMail"));
+const emailTemplates_1 = require("../utils/emailTemplates");
+const AppError_1 = __importDefault(require("../utils/AppError"));
 /**
  * Test SMTP connections for all email types
  *
@@ -136,27 +54,22 @@ interface BasicEmailRequest extends Request {
  *   }
  * }
  */
-
-export const getSMTPStatus = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const smtpStatus = emailService.getSMTPStatus();
-
+exports.getSMTPStatus = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const smtpStatus = protonMail_1.default.getSMTPStatus();
     res.status(200).json({
-      status: "success",
-      message: "SMTP status retrieved",
-      smtpStatus,
-      environmentCheck: {
-        SMTP_USERNAME_KARA: !!process.env.SMTP_USERNAME_KARA,
-        SMTP_TOKEN_KARA: !!process.env.SMTP_TOKEN_KARA,
-        SMTP_USERNAME_SCHOLARS: !!process.env.SMTP_USERNAME_SCHOLARS,
-        SMTP_TOKEN_SCHOLARS: !!process.env.SMTP_TOKEN_SCHOLARS,
-        SMTP_SERVER: process.env.SMTP_SERVER,
-        SMTP_PORT: process.env.SMTP_PORT,
-      },
+        status: "success",
+        message: "SMTP status retrieved",
+        smtpStatus,
+        environmentCheck: {
+            SMTP_USERNAME_KARA: !!process.env.SMTP_USERNAME_KARA,
+            SMTP_TOKEN_KARA: !!process.env.SMTP_TOKEN_KARA,
+            SMTP_USERNAME_SCHOLARS: !!process.env.SMTP_USERNAME_SCHOLARS,
+            SMTP_TOKEN_SCHOLARS: !!process.env.SMTP_TOKEN_SCHOLARS,
+            SMTP_SERVER: process.env.SMTP_SERVER,
+            SMTP_PORT: process.env.SMTP_PORT,
+        },
     });
-  }
-);
-
+}));
 /**
  * Send basic email using Kara's SMTP
  *
@@ -204,31 +117,25 @@ export const getSMTPStatus = catchAsync(
  *   }
  * }
  */
-
-export const sendBasicEmail = catchAsync(
-  async (req: BasicEmailRequest, res: Response, next: NextFunction) => {
+exports.sendBasicEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { toEmail, toName, subject, htmlContent, cc, bcc } = req.body;
-
-    const result = await emailService.sendEmail({
-      senderName: "SI<3>",
-      senderEmail: emailService.getSenderEmail("basic"),
-      toName,
-      toEmail,
-      subject,
-      htmlContent,
-      cc,
-      bcc,
-      emailType: "basic",
+    const result = yield protonMail_1.default.sendEmail({
+        senderName: "SI<3>",
+        senderEmail: protonMail_1.default.getSenderEmail("basic"),
+        toName,
+        toEmail,
+        subject,
+        htmlContent,
+        cc,
+        bcc,
+        emailType: "basic",
     });
-
     res.status(200).json({
-      status: "success",
-      message: "Email sent successfully",
-      result,
+        status: "success",
+        message: "Email sent successfully",
+        result,
     });
-  }
-);
-
+}));
 /**
  * Send bulk emails
  *
@@ -252,33 +159,11 @@ export const sendBasicEmail = catchAsync(
  * @throws  {AppError} 400 - Missing required fields
  * @throws  {AppError} 503 - Email service unavailable
  */
-
-export const sendBulkEmail = catchAsync(
-  async (req: BulkEmailRequest, res: Response, next: NextFunction) => {
-    const {
-      recipients,
-      subject,
-      htmlContent,
-      senderName = "SI<3>",
-      emailType = "basic",
-    } = req.body;
-
-    const bulkResult = await emailService.sendBulkEmails(
-      recipients,
-      subject,
-      htmlContent,
-      emailType,
-      senderName
-    );
-
-    res.status(200).json({
-      status: "success",
-      message: `Bulk email completed. ${bulkResult.summary.sent} sent, ${bulkResult.summary.failed} failed`,
-      ...bulkResult,
-    });
-  }
-);
-
+exports.sendBulkEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { recipients, subject, htmlContent, senderName = "SI<3>", emailType = "basic", } = req.body;
+    const bulkResult = yield protonMail_1.default.sendBulkEmails(recipients, subject, htmlContent, emailType, senderName);
+    res.status(200).json(Object.assign({ status: "success", message: `Bulk email completed. ${bulkResult.summary.sent} sent, ${bulkResult.summary.failed} failed` }, bulkResult));
+}));
 /**
  * Send diversity tracker submission email using Kara's SMTP
  *
@@ -343,75 +228,64 @@ export const sendBulkEmail = catchAsync(
  *   }
  * }
  */
-
-export const sendDiversityTrackerSubmissionEmail = catchAsync(
-  async (req: FormSubmissionRequest, res: Response, next: NextFunction) => {
+exports.sendDiversityTrackerSubmissionEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { formData } = req.body;
-
     if (!formData) {
-      return next(new AppError("Missing form data", 400));
+        return next(new AppError_1.default("Missing form data", 400));
     }
-
-    const data = formData as DiversityFormData;
-
+    const data = formData;
     // await DiversityTrackerModel.create(data);
-
     // Convert DiversityFormData to DiversityFormData format for the template
-    const templateData: DiversityFormData = {
-      selfIdentity: data.selfIdentity,
-      selfIdentityCustom: data.selfIdentityCustom,
-      ageRange: data.ageRange,
-      ethnicity: data.ethnicity,
-      disability: data.disability,
-      sexualOrientation: data.sexualOrientation,
-      equityScale: data.equityScale,
-      improvementSuggestions: data.improvementSuggestions,
-      grantProvider: data.grantProvider,
-      grantRound: data.grantRound,
-      suggestions: data.suggestions,
-      activeGrantsParticipated: data.activeGrantsParticipated,
-      offeringClear: data.offeringClear,
-      claritySuggestions: data.claritySuggestions,
-      engagementChannels: data.engagementChannels,
-      decentralizedDecisionMaking: data.decentralizedDecisionMaking,
-      hasRoadmap: data.hasRoadmap,
-      reportsFinancials: data.reportsFinancials,
-      runsGrantPrograms: data.runsGrantPrograms,
-      grantRoundParticipation: data.grantRoundParticipation,
-      grantExperience: data.grantExperience,
-      diversityInitiatives: data.diversityInitiatives,
-      diverseTeam: data.diverseTeam,
-      underrepresentedLeadership: data.underrepresentedLeadership,
-      highlightsUnderrepresented: data.highlightsUnderrepresented,
-      uniqueValue: data.uniqueValue,
-      marketImpact: data.marketImpact,
+    const templateData = {
+        selfIdentity: data.selfIdentity,
+        selfIdentityCustom: data.selfIdentityCustom,
+        ageRange: data.ageRange,
+        ethnicity: data.ethnicity,
+        disability: data.disability,
+        sexualOrientation: data.sexualOrientation,
+        equityScale: data.equityScale,
+        improvementSuggestions: data.improvementSuggestions,
+        grantProvider: data.grantProvider,
+        grantRound: data.grantRound,
+        suggestions: data.suggestions,
+        activeGrantsParticipated: data.activeGrantsParticipated,
+        offeringClear: data.offeringClear,
+        claritySuggestions: data.claritySuggestions,
+        engagementChannels: data.engagementChannels,
+        decentralizedDecisionMaking: data.decentralizedDecisionMaking,
+        hasRoadmap: data.hasRoadmap,
+        reportsFinancials: data.reportsFinancials,
+        runsGrantPrograms: data.runsGrantPrograms,
+        grantRoundParticipation: data.grantRoundParticipation,
+        grantExperience: data.grantExperience,
+        diversityInitiatives: data.diversityInitiatives,
+        diverseTeam: data.diverseTeam,
+        underrepresentedLeadership: data.underrepresentedLeadership,
+        highlightsUnderrepresented: data.highlightsUnderrepresented,
+        uniqueValue: data.uniqueValue,
+        marketImpact: data.marketImpact,
     };
-
     // Generate notification email content for internal team (admin)
-    const adminNotificationHtml = diversityTrackerTemplate(templateData);
-
+    const adminNotificationHtml = (0, emailTemplates_1.diversityTrackerTemplate)(templateData);
     // Send notification email to admin using Kara's SMTP (diversity uses basic)
-    const adminNotificationResult = await emailService.sendEmail({
-      senderName: "SI<3>",
-      senderEmail: emailService.getSenderEmail("diversity"),
-      toName: "SI<3> Team",
-      toEmail: "kara@si3.space",
-      subject: "New Diversity Tracker Submission",
-      htmlContent: adminNotificationHtml,
-      emailType: "diversity", // Uses Kara's SMTP
+    const adminNotificationResult = yield protonMail_1.default.sendEmail({
+        senderName: "SI<3>",
+        senderEmail: protonMail_1.default.getSenderEmail("diversity"),
+        toName: "SI<3> Team",
+        toEmail: "kara@si3.space",
+        subject: "New Diversity Tracker Submission",
+        htmlContent: adminNotificationHtml,
+        emailType: "diversity", // Uses Kara's SMTP
     });
-
     res.status(200).json({
-      status: "success",
-      message: "Diversity tracker submission processed successfully",
-      result: {
-        adminNotification: adminNotificationResult,
-      },
-      note: "Database save was skipped due to connection issues. No confirmation email sent (anonymous form).",
+        status: "success",
+        message: "Diversity tracker submission processed successfully",
+        result: {
+            adminNotification: adminNotificationResult,
+        },
+        note: "Database save was skipped due to connection issues. No confirmation email sent (anonymous form).",
     });
-  }
-);
-
+}));
 /**
  * Send scholars submission email using Scholars SMTP
  *
@@ -469,89 +343,68 @@ export const sendDiversityTrackerSubmissionEmail = catchAsync(
  *   }
  * }
  */
-
-export const sendScholarsSubmissionEmail = catchAsync(
-  async (req: FormSubmissionRequest, res: Response, next: NextFunction) => {
+exports.sendScholarsSubmissionEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { formData } = req.body;
-
     if (!formData) {
-      return next(new AppError("Missing form data", 400));
+        return next(new AppError_1.default("Missing form data", 400));
     }
-
-    const data = formData as ScholarsFormData;
-
+    const data = formData;
     // Validate required fields
     if (!data.name || !data.email || !data.interests) {
-      return next(
-        new AppError("Missing required fields: name, email, interests", 400)
-      );
+        return next(new AppError_1.default("Missing required fields: name, email, interests", 400));
     }
-
     // Create a new scholar application with normalized data
     const scholarData = {
-      name: data.name,
-      email: data.email,
-      details: data.details || "",
-      newsletter: data.newsletter === "yes" || data.newsletter === true,
-      interests: Array.isArray(data.interests)
-        ? data.interests
-        : [data.interests],
+        name: data.name,
+        email: data.email,
+        details: data.details || "",
+        newsletter: data.newsletter === "yes" || data.newsletter === true,
+        interests: Array.isArray(data.interests)
+            ? data.interests
+            : [data.interests],
     };
-
     // Check if email already exists
-    const existingScholar = await ScholarsProgramModel.findOne({
-      email: data.email,
+    const existingScholar = yield scholarsModel_1.default.findOne({
+        email: data.email,
     });
-
     if (existingScholar) {
-      return next(
-        new AppError("A scholar with this email already exists", 400)
-      );
+        return next(new AppError_1.default("A scholar with this email already exists", 400));
     }
-
     // Save to database
-    await ScholarsProgramModel.create(scholarData);
-
+    yield scholarsModel_1.default.create(scholarData);
     // Generate notification email content for internal team (admin)
-    const adminNotificationHtml = scholarsSubmissionTemplate(scholarData);
-
+    const adminNotificationHtml = (0, emailTemplates_1.scholarsSubmissionTemplate)(scholarData);
     // Send notification email to admin using Scholars SMTP
-    const adminNotificationResult = await emailService.sendEmail({
-      senderName: "SI U Scholars",
-      senderEmail: emailService.getSenderEmail("scholars"),
-      toName: "SI U Team",
-      toEmail: "kara@si3.space",
-      subject: `New SI U Scholar Submission: ${data.name}`,
-      htmlContent: adminNotificationHtml,
-      emailType: "scholars",
+    const adminNotificationResult = yield protonMail_1.default.sendEmail({
+        senderName: "SI U Scholars",
+        senderEmail: protonMail_1.default.getSenderEmail("scholars"),
+        toName: "SI U Team",
+        toEmail: "kara@si3.space",
+        subject: `New SI U Scholar Submission: ${data.name}`,
+        htmlContent: adminNotificationHtml,
+        emailType: "scholars",
     });
-
     // Generate confirmation email content for the applicant
-    const applicantConfirmationHtml = scholarsReplyTemplate(scholarData);
-
+    const applicantConfirmationHtml = (0, emailTemplates_1.scholarsReplyTemplate)(scholarData);
     // Send confirmation email to the applicant using Scholars SMTP
-    const applicantConfirmationResult = await emailService.sendEmail({
-      senderName: "SI U Scholars",
-      senderEmail: emailService.getSenderEmail("scholars"),
-      toName: data.name,
-      toEmail: data.email,
-      subject: "Thank you for joining our waitlist as a Scholar!",
-      htmlContent: applicantConfirmationHtml,
-      emailType: "scholars",
+    const applicantConfirmationResult = yield protonMail_1.default.sendEmail({
+        senderName: "SI U Scholars",
+        senderEmail: protonMail_1.default.getSenderEmail("scholars"),
+        toName: data.name,
+        toEmail: data.email,
+        subject: "Thank you for joining our waitlist as a Scholar!",
+        htmlContent: applicantConfirmationHtml,
+        emailType: "scholars",
     });
-
     res.status(200).json({
-      status: "success",
-      message:
-        "Scholars program application submitted and emails sent successfully",
-      result: {
-        adminNotification: adminNotificationResult,
-        applicantConfirmation: applicantConfirmationResult,
-      },
+        status: "success",
+        message: "Scholars program application submitted and emails sent successfully",
+        result: {
+            adminNotification: adminNotificationResult,
+            applicantConfirmation: applicantConfirmationResult,
+        },
     });
-  }
-);
-
+}));
 /**
  * Send partner submission email using Partners SMTP
  *
@@ -604,72 +457,54 @@ export const sendScholarsSubmissionEmail = catchAsync(
  *   }
  * }
  */
-
-export const sendPartnerSubmissionEmail = catchAsync(
-  async (req: FormSubmissionRequest, res: Response, next: NextFunction) => {
+exports.sendPartnerSubmissionEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { formData } = req.body;
-
     if (!formData || !formData.email || !formData.name) {
-      return next(new AppError("Missing form data, email, or name", 400));
+        return next(new AppError_1.default("Missing form data, email, or name", 400));
     }
-
-    const data = formData as PartnerFormData;
-
+    const data = formData;
     // Check if email already exists
-    const existingPartner = await PartnerProgramModel.findOne({
-      email: data.email,
+    const existingPartner = yield partnersModel_1.default.findOne({
+        email: data.email,
     });
-
     if (existingPartner) {
-      return next(
-        new AppError("A partner with this email already exists", 400)
-      );
+        return next(new AppError_1.default("A partner with this email already exists", 400));
     }
-
-    await PartnerProgramModel.create(data);
-
+    yield partnersModel_1.default.create(data);
     // Generate notification email content for internal team (admin)
-    const adminNotificationHtml = partnerSubmissionTemplate(data);
-
+    const adminNotificationHtml = (0, emailTemplates_1.partnerSubmissionTemplate)(data);
     // Send notification email to admin using Partners SMTP
-    const adminNotificationResult = await emailService.sendEmail({
-      senderName: "SI<3>",
-      senderEmail: emailService.getSenderEmail("partner"),
-      toName: "SI<3> Team",
-      toEmail: "kara@si3.space",
-      subject: `New SI<3> Partner Inquiry: ${data.name} - ${
-        data.companyName || "Company Name"
-      }`,
-      htmlContent: adminNotificationHtml,
-      emailType: "partner",
+    const adminNotificationResult = yield protonMail_1.default.sendEmail({
+        senderName: "SI<3>",
+        senderEmail: protonMail_1.default.getSenderEmail("partner"),
+        toName: "SI<3> Team",
+        toEmail: "kara@si3.space",
+        subject: `New SI<3> Partner Inquiry: ${data.name} - ${data.companyName || "Company Name"}`,
+        htmlContent: adminNotificationHtml,
+        emailType: "partner",
     });
-
     // Generate confirmation email content for the applicant
-    const applicantConfirmationHtml = partnerReplyTemplate(data);
-
+    const applicantConfirmationHtml = (0, emailTemplates_1.partnerReplyTemplate)(data);
     // Send confirmation email to the applicant using Partners SMTP
-    const applicantConfirmationResult = await emailService.sendEmail({
-      senderName: "SI<3> Partners",
-      senderEmail: emailService.getSenderEmail("partner"),
-      toName: data.name,
-      toEmail: data.email,
-      subject: "Thank you for your inquiry!",
-      htmlContent: applicantConfirmationHtml,
-      emailType: "partner",
+    const applicantConfirmationResult = yield protonMail_1.default.sendEmail({
+        senderName: "SI<3> Partners",
+        senderEmail: protonMail_1.default.getSenderEmail("partner"),
+        toName: data.name,
+        toEmail: data.email,
+        subject: "Thank you for your inquiry!",
+        htmlContent: applicantConfirmationHtml,
+        emailType: "partner",
     });
-
     res.status(200).json({
-      status: "success",
-      message: "Partner program submission saved and emails sent successfully",
-      result: {
-        adminNotification: adminNotificationResult,
-        applicantConfirmation: applicantConfirmationResult,
-      },
-      note: "Database save was skipped due to connection issues",
+        status: "success",
+        message: "Partner program submission saved and emails sent successfully",
+        result: {
+            adminNotification: adminNotificationResult,
+            applicantConfirmation: applicantConfirmationResult,
+        },
+        note: "Database save was skipped due to connection issues",
     });
-  }
-);
-
+}));
 /**
  * Send guide submission email using Guides SMTP
  *
@@ -722,62 +557,49 @@ export const sendPartnerSubmissionEmail = catchAsync(
  *   }
  * }
  */
-
-export const sendGuideSubmissionEmail = catchAsync(
-  async (req: FormSubmissionRequest, res: Response, next: NextFunction) => {
+exports.sendGuideSubmissionEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { formData } = req.body;
-
     if (!formData || !formData.email || !formData.name) {
-      return next(new AppError("Missing form data, email, or name", 400));
+        return next(new AppError_1.default("Missing form data, email, or name", 400));
     }
-
-    const data = formData as GuideFormData;
-
+    const data = formData;
     // Check if email already exists
-    const existingGuide = await Guide.findOne({ email: data.email });
-
+    const existingGuide = yield guidesModel_1.default.findOne({ email: data.email });
     if (existingGuide) {
-      return next(new AppError("A guide with this email already exists", 400));
+        return next(new AppError_1.default("A guide with this email already exists", 400));
     }
-
     // Save to database
-    await Guide.create(formData);
-
+    yield guidesModel_1.default.create(formData);
     // Generate notification email content for internal team (admin)
-    const adminNotificationHtml = guidesSubmissionTemplate(data);
-
+    const adminNotificationHtml = (0, emailTemplates_1.guidesSubmissionTemplate)(data);
     // Send notification email to admin using Guides SMTP
-    const adminNotificationResult = await emailService.sendEmail({
-      senderName: "SI Her Guides",
-      senderEmail: emailService.getSenderEmail("guide"),
-      toName: "SI Her Team",
-      toEmail: "kara@si3.space",
-      subject: `New Si Her Guide Application: ${data.name}`,
-      htmlContent: adminNotificationHtml,
-      emailType: "guide",
+    const adminNotificationResult = yield protonMail_1.default.sendEmail({
+        senderName: "SI Her Guides",
+        senderEmail: protonMail_1.default.getSenderEmail("guide"),
+        toName: "SI Her Team",
+        toEmail: "kara@si3.space",
+        subject: `New Si Her Guide Application: ${data.name}`,
+        htmlContent: adminNotificationHtml,
+        emailType: "guide",
     });
-
     // Generate confirmation email content for the applicant
-    const applicantConfirmationHtml = guidesReplyTemplate(data);
-
+    const applicantConfirmationHtml = (0, emailTemplates_1.guidesReplyTemplate)(data);
     // Send confirmation email to the applicant using Guides SMTP
-    const applicantConfirmationResult = await emailService.sendEmail({
-      senderName: "SI Her Guides",
-      senderEmail: emailService.getSenderEmail("guide"),
-      toName: data.name,
-      toEmail: data.email,
-      subject: "Thank you for your applying to be a Si Her Guide!",
-      htmlContent: applicantConfirmationHtml,
-      emailType: "guide",
+    const applicantConfirmationResult = yield protonMail_1.default.sendEmail({
+        senderName: "SI Her Guides",
+        senderEmail: protonMail_1.default.getSenderEmail("guide"),
+        toName: data.name,
+        toEmail: data.email,
+        subject: "Thank you for your applying to be a Si Her Guide!",
+        htmlContent: applicantConfirmationHtml,
+        emailType: "guide",
     });
-
     res.status(200).json({
-      status: "success",
-      message: "Guide submission saved and emails sent successfully",
-      result: {
-        adminNotification: adminNotificationResult,
-        applicantConfirmation: applicantConfirmationResult,
-      },
+        status: "success",
+        message: "Guide submission saved and emails sent successfully",
+        result: {
+            adminNotification: adminNotificationResult,
+            applicantConfirmation: applicantConfirmationResult,
+        },
     });
-  }
-);
+}));

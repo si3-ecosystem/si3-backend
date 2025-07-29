@@ -2,34 +2,34 @@ import nodemailer, { Transporter } from "nodemailer";
 
 // Types
 export interface EmailConfig {
-  username: string;
   token: string;
+  username: string;
 }
 
 export interface EmailOptions {
-  senderName: string;
-  senderEmail: string;
+  cc?: string[];
+  bcc?: string[];
   toName: string;
   toEmail: string;
   subject: string;
+  senderName: string;
+  senderEmail: string;
   htmlContent: string;
-  cc?: string[];
-  bcc?: string[];
   emailType?: EmailType;
 }
 
 export interface EmailResult {
   success: boolean;
-  messageId: string;
-  response?: string;
   smtpUsed: string;
+  response?: string;
+  messageId: string;
 }
 
 export interface BulkEmailResult {
   email: string;
+  error?: string;
   success: boolean;
   messageId?: string;
-  error?: string;
 }
 
 export type EmailType =
@@ -41,20 +41,20 @@ export type EmailType =
 
 // Email type to SMTP mapping
 const EMAIL_TYPE_MAPPING: Record<EmailType, string> = {
-  basic: "kara",
+  basic: "members",
   guide: "guides",
-  diversity: "kara",
   partner: "partners",
   scholars: "scholars",
+  diversity: "members",
 };
 
 // Sender email mapping
 const SENDER_EMAIL_MAPPING: Record<EmailType, string> = {
-  basic: "kara@si3.space",
+  basic: "members@si3.space",
   guide: "guides@si3.space",
   partner: "partners@si3.space",
-  diversity: "kara@si3.space",
   scholars: "scholars@si3.space",
+  diversity: "members@si3.space",
 };
 
 class EmailService {
@@ -65,18 +65,21 @@ class EmailService {
    */
   private getSMTPConfigs(): Record<string, EmailConfig> {
     return {
-      kara: {
-        username: process.env.SMTP_USERNAME_KARA || "",
-        token: process.env.SMTP_TOKEN_KARA || "",
+      members: {
+        username: process.env.SMTP_USERNAME_MEMBERS || "",
+        token: process.env.SMTP_TOKEN_MEMBERS || "",
       },
+
       partners: {
         username: process.env.SMTP_USERNAME_PARTNERS || "",
         token: process.env.SMTP_TOKEN_PARTNERS || "",
       },
+
       guides: {
         username: process.env.SMTP_USERNAME_GUIDES || "",
         token: process.env.SMTP_TOKEN_GUIDES || "",
       },
+
       scholars: {
         username: process.env.SMTP_USERNAME_SCHOLARS || "",
         token: process.env.SMTP_TOKEN_SCHOLARS || "",
@@ -91,7 +94,7 @@ class EmailService {
     // Get fresh config each time (not cached)
     const SMTP_CONFIGS = this.getSMTPConfigs();
 
-    const smtpKey = EMAIL_TYPE_MAPPING[emailType] || "kara";
+    const smtpKey = EMAIL_TYPE_MAPPING[emailType] || "members";
     const config = SMTP_CONFIGS[smtpKey];
 
     if (!config.username || !config.token) {
@@ -300,7 +303,7 @@ class EmailService {
    * Get sender email for email type
    */
   getSenderEmail(emailType: EmailType): string {
-    return SENDER_EMAIL_MAPPING[emailType] || "kara@si3.space";
+    return SENDER_EMAIL_MAPPING[emailType] || "members@si3.space";
   }
 
   /**

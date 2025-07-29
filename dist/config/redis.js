@@ -8,12 +8,15 @@ const ioredis_1 = __importDefault(require("ioredis"));
 const REDIS_CONFIG = {
     host: process.env.REDIS_HOST || "localhost",
     port: parseInt(process.env.REDIS_PORT || "6379", 10),
-    tls: process.env.REDIS_TLS === "true" ? {} : undefined,
+    password: process.env.REDIS_PASSWORD,
+    tls: process.env.NODE_ENV === "production" ? {} : undefined,
     retryStrategy: (times) => {
         const delay = Math.min(times * 50, 2000);
         return delay;
     },
 };
-// Create Redis client with error handling
-const redis = new ioredis_1.default(REDIS_CONFIG);
+// Support for Redis URL in production (Upstash)
+const redis = process.env.REDIS_URL
+    ? new ioredis_1.default(process.env.REDIS_URL)
+    : new ioredis_1.default(REDIS_CONFIG);
 exports.default = redis;
