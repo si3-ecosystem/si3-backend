@@ -1,0 +1,503 @@
+{
+  "info": {
+    "name": "SI3 RSVP API Collection",
+    "description": "Complete RSVP system API endpoints for SI3 platform",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "eventId",
+      "value": "event-sample-001",
+      "type": "string"
+    },
+    {
+      "key": "rsvpId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Send Email OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/email/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "email", "send-otp"]
+            }
+          }
+        },
+        {
+          "name": "Verify Email OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/email/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "email", "verify-otp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.accessToken) {",
+                  "        pm.collectionVariables.set('authToken', response.data.accessToken);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RSVP Management",
+      "item": [
+        {
+          "name": "Create RSVP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"status\": \"attending\",\n  \"guestCount\": 1,\n  \"dietaryRestrictions\": \"Vegetarian\",\n  \"specialRequests\": \"Wheelchair accessible seating\",\n  \"contactInfo\": {\n    \"phone\": \"+1234567890\",\n    \"emergencyContact\": \"Jane Doe - +0987654321\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data._id) {",
+                  "        pm.collectionVariables.set('rsvpId', response.data._id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User RSVPs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/my-rsvps?page=1&limit=10&status=attending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "my-rsvps"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "attending"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get RSVP by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/{{rsvpId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "{{rsvpId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update RSVP",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"maybe\",\n  \"guestCount\": 2,\n  \"dietaryRestrictions\": \"Vegan\",\n  \"specialRequests\": \"Ground floor seating preferred\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/{{rsvpId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "{{rsvpId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete RSVP",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/{{rsvpId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "{{rsvpId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Event RSVP Statistics",
+      "item": [
+        {
+          "name": "Get Event RSVP Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/event/{{eventId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "event", "{{eventId}}", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Event Attendees",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/event/{{eventId}}/attendees?page=1&limit=50&status=attending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "event", "{{eventId}}", "attendees"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "status",
+                  "value": "attending"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check Event Availability",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/event/{{eventId}}/availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "event", "{{eventId}}", "availability"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Calendar & Email",
+      "item": [
+        {
+          "name": "Download Calendar Invitation",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/{{rsvpId}}/calendar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "{{rsvpId}}", "calendar"]
+            }
+          }
+        },
+        {
+          "name": "Send RSVP Confirmation Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rsvpId\": \"{{rsvpId}}\",\n  \"emailType\": \"confirmation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/send-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "send-email"]
+            }
+          }
+        },
+        {
+          "name": "Send Event Reminder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"reminderType\": \"24_hours\",\n  \"customMessage\": \"Don't forget to bring your ID!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/send-reminder",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "send-reminder"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Management",
+      "item": [
+        {
+          "name": "Get All Events with RSVP Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/admin/events?page=1&limit=20&sortBy=eventDate&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "admin", "events"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "eventDate"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export Event Attendees",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/admin/event/{{eventId}}/export?format=csv&includeGuests=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "admin", "event", "{{eventId}}", "export"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv"
+                },
+                {
+                  "key": "includeGuests",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Event Capacity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"maxCapacity\": 150,\n  \"waitlistEnabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/admin/event-capacity",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "admin", "event-capacity"]
+            }
+          }
+        },
+        {
+          "name": "Get RSVP Analytics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/admin/analytics?startDate=2024-01-01&endDate=2024-12-31&groupBy=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "admin", "analytics"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "month"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk Update RSVPs",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rsvpIds\": [\"{{rsvpId}}\"],\n  \"updates\": {\n    \"status\": \"cancelled\",\n    \"adminNotes\": \"Event cancelled due to weather\"\n  },\n  \"sendNotification\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/admin/bulk-update",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "admin", "bulk-update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Waitlist Management",
+      "item": [
+        {
+          "name": "Join Waitlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"guestCount\": 1,\n  \"priority\": \"normal\",\n  \"notes\": \"Very interested in attending\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/waitlist/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "waitlist", "join"]
+            }
+          }
+        },
+        {
+          "name": "Get Waitlist Position",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/waitlist/{{eventId}}/position",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "waitlist", "{{eventId}}", "position"]
+            }
+          }
+        },
+        {
+          "name": "Process Waitlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"spotsAvailable\": 5,\n  \"notifyUsers\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/rsvp/admin/process-waitlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "rsvp", "admin", "process-waitlist"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

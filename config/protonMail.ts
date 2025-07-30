@@ -37,7 +37,9 @@ export type EmailType =
   | "guide"
   | "partner"
   | "diversity"
-  | "scholars";
+  | "scholars"
+  | "rsvp"
+  | "events";
 
 // Email type to SMTP mapping
 const EMAIL_TYPE_MAPPING: Record<EmailType, string> = {
@@ -46,6 +48,8 @@ const EMAIL_TYPE_MAPPING: Record<EmailType, string> = {
   partner: "partners",
   scholars: "scholars",
   diversity: "members",
+  rsvp: "events",
+  events: "events",
 };
 
 // Sender email mapping
@@ -55,6 +59,8 @@ const SENDER_EMAIL_MAPPING: Record<EmailType, string> = {
   partner: "partners@si3.space",
   scholars: "scholars@si3.space",
   diversity: "members@si3.space",
+  rsvp: "events@si3.space",
+  events: "events@si3.space",
 };
 
 class EmailService {
@@ -83,6 +89,11 @@ class EmailService {
       scholars: {
         username: process.env.SMTP_USERNAME_SCHOLARS || "",
         token: process.env.SMTP_TOKEN_SCHOLARS || "",
+      },
+
+      events: {
+        username: process.env.SMTP_USERNAME_EVENTS || "",
+        token: process.env.SMTP_TOKEN_EVENTS || "",
       },
     };
   }
