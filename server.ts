@@ -10,11 +10,13 @@ import { mainMiddleware } from "./middleware/mainMiddleware";
 import authRouter from "./routes/authRoutes";
 import emailRouter from "./routes/emailRoutes";
 import commentRouter from "./routes/commentRoutes";
+import rsvpRouter from "./routes/rsvpRoutes";
 
 import redis from "./config/redis";
 import { checkConnection, connectDB } from "./config/db";
 
 import redisHelper from "./helpers/redisHelper";
+import cronService from "./services/cronService";
 
 // Load environment variables
 dotenv.config();
@@ -70,6 +72,7 @@ app.get("/health", async (req: Request, res: Response) => {
 app.use("/api/auth", authRouter);
 app.use("/api/email", emailRouter);
 app.use("/api/comments", commentRouter);
+app.use("/api/rsvp", rsvpRouter);
 
 // Handle 404 errors
 app.use(notFoundHandler);
@@ -81,6 +84,9 @@ app.use(globalErrorHandler);
 const startServer = async (): Promise<void> => {
   try {
     await connectDB();
+
+    // Initialize cron jobs for RSVP system
+    cronService.init();
 
     // Start server
     const server = app.listen(PORT, () => {
