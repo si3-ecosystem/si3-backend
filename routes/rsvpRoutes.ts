@@ -14,6 +14,7 @@ import {
   sendRSVPEmail,
   sendEventReminder,
   downloadCalendarInvitation,
+  downloadPublicCalendarInvitation,
   getCalendarLinks
 } from "../controllers/rsvpController";
 
@@ -173,6 +174,16 @@ router.post(
   validateSendReminder,
   validationMiddleware,
   sendEventReminder
+);
+
+/**
+ * @route   GET /api/rsvp/:id/calendar/public
+ * @desc    Download calendar invitation for RSVP (Public with token)
+ * @access  Public
+ */
+router.get(
+  "/:id/calendar/public",
+  downloadPublicCalendarInvitation
 );
 
 /**

@@ -192,6 +192,31 @@ export const createRSVP = catchAsync(async (req: AuthenticatedRequest, res: Resp
   await redisHelper.cacheDelete(`user_rsvps_${userId}`);
   console.log(`✅ Cache cleared for event ${eventId} and user ${userId}`);
 
+  // Step 7: Send confirmation email with calendar attachment
+  console.log(`🔍 Step 7: Sending confirmation email with calendar invitation`);
+  try {
+    const RSVPEmailService = await import("../services/rsvpEmailService");
+    const emailSent = await RSVPEmailService.default.sendConfirmationEmail(
+      populatedRSVP._id.toString(),
+      "Thank you for your RSVP! We're excited to see you at the event. Please find the calendar invitation attached."
+    );
+
+    if (emailSent) {
+      console.log(`✅ Confirmation email sent successfully to ${populatedRSVP.user.email}`);
+
+      // Update RSVP to mark confirmation email as sent
+      await RSVPModel.findByIdAndUpdate(populatedRSVP._id, {
+        confirmationEmailSent: true
+      });
+      console.log(`📊 RSVP updated: confirmationEmailSent = true`);
+    } else {
+      console.log(`⚠️ Failed to send confirmation email to ${populatedRSVP.user.email}`);
+    }
+  } catch (emailError) {
+    console.error(`💥 Error sending confirmation email:`, emailError);
+    // Don't fail the RSVP creation if email fails
+  }
+
   console.log(`🎉 RSVP creation completed successfully!`);
   res.status(201).json({
     status: "success",
@@ -730,6 +755,61 @@ export const sendEventReminder = catchAsync(async (req: AuthenticatedRequest, re
   } catch (error) {
     console.error('Bulk reminder error:', error);
     return next(new AppError("Failed to send reminder emails", 500));
+  }
+});
+
+/**
+ * @desc    Download calendar invitation for RSVP (Public with token)
+ * @route   GET /api/rsvp/:id/calendar/public
+ * @access  Public (with secure token)
+ */
+export const downloadPublicCalendarInvitation = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+  const { format = 'ics', token } = req.query;
+
+  // Get RSVP
+  const rsvp = await RSVPModel.findById(id);
+  if (!rsvp) {
+    return next(new AppError("RSVP not found", 404));
+  }
+
+  // Verify token (simple token based on RSVP ID and user ID)
+  const expectedToken = Buffer.from(`${rsvp._id}:${rsvp.userId}:${rsvp.eventId}`).toString('base64');
+  if (token !== expectedToken) {
+    return next(new AppError("Invalid calendar access token", 403));
+  }
+
+  // Only allow calendar download for attending users
+  if (rsvp.status !== RSVPStatus.ATTENDING) {
+    return next(new AppError("Calendar invitations are only available for attending RSVPs", 400));
+  }
+
+  try {
+    if (format === 'google') {
+      // Redirect to Google Calendar
+      const googleURL = await CalendarService.generateGoogleCalendarURL(id);
+      return res.redirect(googleURL);
+    } else if (format === 'outlook') {
+      // Redirect to Outlook Calendar
+      const outlookURL = await CalendarService.generateOutlookCalendarURL(id);
+      return res.redirect(outlookURL);
+    } else {
+      // Generate and download ICS file
+      const icsContent = await CalendarService.generateICSForRSVP(id);
+      const filename = CalendarService.generateFilename(
+        `Event_${rsvp.eventId}`,
+        id
+      );
+
+      res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'no-cache');
+
+      res.send(icsContent);
+    }
+  } catch (error) {
+    console.error('Calendar generation error:', error);
+    return next(new AppError("Failed to generate calendar invitation", 500));
   }
 });
 

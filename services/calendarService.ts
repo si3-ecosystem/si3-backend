@@ -361,6 +361,22 @@ export class CalendarService {
       throw new Error('Failed to generate Outlook Calendar URL');
     }
   }
+
+  /**
+   * Generate a safe filename for the ICS calendar file
+   */
+  static generateFilename(eventTitle: string, rsvpId: string): string {
+    // Clean the event title for use in filename
+    const cleanTitle = eventTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .substring(0, 50); // Limit length
+
+    // Create filename with RSVP ID for uniqueness
+    const shortRsvpId = rsvpId.substring(rsvpId.length - 8); // Last 8 characters
+    return `${cleanTitle}_${shortRsvpId}.ics`;
+  }
 }
 
 export default CalendarService;
