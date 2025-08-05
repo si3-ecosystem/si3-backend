@@ -18,6 +18,8 @@ const errorController_1 = require("./controllers/errorController");
 const mainMiddleware_1 = require("./middleware/mainMiddleware");
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const emailRoutes_1 = __importDefault(require("./routes/emailRoutes"));
+const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
+const rsvpRoutes_1 = __importDefault(require("./routes/rsvpRoutes"));
 const redis_1 = __importDefault(require("./config/redis"));
 const db_1 = require("./config/db");
 const redisHelper_1 = __importDefault(require("./helpers/redisHelper"));
@@ -64,6 +66,8 @@ app.get("/health", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 }));
 app.use("/api/auth", authRoutes_1.default);
 app.use("/api/email", emailRoutes_1.default);
+app.use("/api/comments", commentRoutes_1.default);
+app.use("/api/rsvp", rsvpRoutes_1.default);
 // Handle 404 errors
 app.use(errorController_1.notFoundHandler);
 // Global error handler

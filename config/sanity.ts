@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { createClient } from '@sanity/client';
 
 // Sanity client configuration
@@ -135,6 +138,8 @@ export class SanityEventService {
    */
   static async validateEventForRSVP(eventId: string) {
     try {
+      console.log(`🔍 Sanity: Fetching event data for eventId: ${eventId}`);
+
       const event = await sanityClient.fetch(`
         *[_type == "guidesSession" && _id == $eventId][0] {
           _id,
@@ -153,34 +158,75 @@ export class SanityEventService {
         }
       `, { eventId });
 
+      console.log(`📊 Sanity: Raw event data received:`, JSON.stringify(event, null, 2));
+
       if (!event) {
+        console.log(`❌ Sanity: Event not found for eventId: ${eventId}`);
         throw new Error('Event not found');
       }
+
+      console.log(`📊 Sanity: Event found - analyzing RSVP settings:`, {
+        eventId: event._id,
+        title: event.title,
+        hasRsvpSettings: !!event.rsvpSettings,
+        rsvpEnabled: event.rsvpSettings?.enabled,
+        maxGuestsPerRSVP: event.rsvpSettings?.maxGuestsPerRSVP,
+        maxGuestsType: typeof event.rsvpSettings?.maxGuestsPerRSVP,
+        maxCapacity: event.rsvpSettings?.maxCapacity,
+        waitlistEnabled: event.rsvpSettings?.waitlistEnabled,
+        requiresApproval: event.rsvpSettings?.requiresApproval
+      });
 
       // Guide sessions don't have isPublished field, so we skip this check
       // You can add a published field to your guidesSession schema if needed
 
+      console.log(`🔍 Sanity: Validating RSVP settings...`);
       if (!event.rsvpSettings?.enabled) {
+        console.log(`❌ Sanity: RSVP not enabled for this event`);
         throw new Error('RSVP is not enabled for this event');
       }
+      console.log(`✅ Sanity: RSVP is enabled`);
 
       // Check if RSVP deadline has passed
       if (event.rsvpSettings.rsvpDeadline) {
         const deadline = new Date(event.rsvpSettings.rsvpDeadline);
-        if (deadline < new Date()) {
+        const now = new Date();
+        console.log(`🔍 Sanity: Checking RSVP deadline:`, {
+          deadline: deadline.toISOString(),
+          now: now.toISOString(),
+          hasDeadlinePassed: deadline < now
+        });
+        if (deadline < now) {
+          console.log(`❌ Sanity: RSVP deadline has passed`);
           throw new Error('RSVP deadline has passed');
         }
+        console.log(`✅ Sanity: RSVP deadline not passed`);
+      } else {
+        console.log(`📊 Sanity: No RSVP deadline set`);
       }
 
       // Check if session has already occurred
       const eventDate = new Date(event.eventDate);
-      if (eventDate < new Date()) {
+      const now = new Date();
+      console.log(`🔍 Sanity: Checking event date:`, {
+        eventDate: eventDate.toISOString(),
+        now: now.toISOString(),
+        isEventInPast: eventDate < now
+      });
+      if (eventDate < now) {
+        console.log(`❌ Sanity: Cannot RSVP for past sessions`);
         throw new Error('Cannot RSVP for past sessions');
       }
+      console.log(`✅ Sanity: Event is in the future`);
 
+      console.log(`✅ Sanity: Event validation completed successfully`);
       return event;
     } catch (error) {
-      console.error('Error validating event for RSVP:', error);
+      console.error(`💥 Sanity: Error validating event for RSVP:`, {
+        eventId,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
   }

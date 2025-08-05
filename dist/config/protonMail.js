@@ -21,6 +21,8 @@ const EMAIL_TYPE_MAPPING = {
     partner: "partners",
     scholars: "scholars",
     diversity: "members",
+    rsvp: "events",
+    events: "events",
 };
 // Sender email mapping
 const SENDER_EMAIL_MAPPING = {
@@ -29,6 +31,8 @@ const SENDER_EMAIL_MAPPING = {
     partner: "partners@si3.space",
     scholars: "scholars@si3.space",
     diversity: "members@si3.space",
+    rsvp: "events@si3.space",
+    events: "events@si3.space",
 };
 class EmailService {
     constructor() {
@@ -54,6 +58,10 @@ class EmailService {
             scholars: {
                 username: process.env.SMTP_USERNAME_SCHOLARS || "",
                 token: process.env.SMTP_TOKEN_SCHOLARS || "",
+            },
+            events: {
+                username: process.env.SMTP_USERNAME_EVENTS || "",
+                token: process.env.SMTP_TOKEN_EVENTS || "",
             },
         };
     }

@@ -1,12 +1,17 @@
 import { emailService } from "../config/protonMail";
 import { SanityEventService } from "../config/sanity";
 import RSVPModel, { IRSVP, RSVPStatus } from "../models/rsvpModel";
-import UserModel from "../models/usersModel";
+import { IUser } from "../models/usersModel";
 import {
   rsvpConfirmationTemplate,
   eventReminderTemplate,
   waitlistNotificationTemplate
 } from "../utils/rsvpEmailTemplates";
+
+// Type for RSVP with populated user
+interface PopulatedRSVP extends IRSVP {
+  user: IUser;
+}
 
 // Types for email operations
 export interface RSVPEmailData {
@@ -30,7 +35,7 @@ export class RSVPEmailService {
   static async sendConfirmationEmail(rsvpId: string, customMessage?: string): Promise<boolean> {
     try {
       // Get RSVP with user data
-      const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles');
+      const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles') as PopulatedRSVP | null;
       if (!rsvp) {
         throw new Error('RSVP not found');
       }
@@ -78,13 +83,13 @@ export class RSVPEmailService {
    * Send event reminder email
    */
   static async sendReminderEmail(
-    rsvpId: string, 
-    reminderType: string, 
+    rsvpId: string,
+    reminderType: string,
     customMessage?: string
   ): Promise<boolean> {
     try {
       // Get RSVP with user data
-      const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles');
+      const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles') as PopulatedRSVP | null;
       if (!rsvp) {
         throw new Error('RSVP not found');
       }
@@ -152,7 +157,7 @@ export class RSVPEmailService {
   static async sendWaitlistNotification(rsvpId: string): Promise<boolean> {
     try {
       // Get RSVP with user data
-      const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles');
+      const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles') as PopulatedRSVP | null;
       if (!rsvp) {
         throw new Error('RSVP not found');
       }
@@ -204,7 +209,7 @@ export class RSVPEmailService {
         eventId,
         status: { $in: statusFilter },
         reminderEmailsSent: { $ne: reminderType } // Haven't received this reminder yet
-      }).populate('user', 'email roles');
+      }).populate('user', 'email roles') as unknown as PopulatedRSVP[];
 
       const results = {
         sent: 0,
@@ -270,7 +275,7 @@ export class RSVPEmailService {
       })
       .sort({ waitlistPosition: 1 })
       .limit(spotsAvailable)
-      .populate('user', 'email roles');
+      .populate('user', 'email roles') as unknown as PopulatedRSVP[];
 
       const results = {
         notified: 0,
@@ -308,13 +313,13 @@ export class RSVPEmailService {
    * Send RSVP update notification
    */
   static async sendUpdateNotification(
-    rsvpId: string, 
-    changes: string[], 
+    rsvpId: string,
+    changes: string[],
     customMessage?: string
   ): Promise<boolean> {
     try {
       // Get RSVP with user data
-      const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles');
+      const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles') as PopulatedRSVP | null;
       if (!rsvp) {
         throw new Error('RSVP not found');
       }
