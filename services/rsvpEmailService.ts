@@ -3,10 +3,10 @@ import { SanityEventService } from "../config/sanity";
 import RSVPModel, { IRSVP, RSVPStatus } from "../models/rsvpModel";
 import { IUser } from "../models/usersModel";
 import {
-  rsvpConfirmationTemplate,
   eventReminderTemplate,
   waitlistNotificationTemplate
 } from "../utils/rsvpEmailTemplates";
+import { si3RSVPConfirmationTemplate } from "../utils/si3EmailTemplate";
 
 // Type for RSVP with populated user
 interface PopulatedRSVP extends IRSVP {
@@ -47,7 +47,6 @@ export class RSVPEmailService {
       }
 
       // Generate calendar ICS file
-      console.log(`📅 Generating calendar ICS file for RSVP ${rsvpId}`);
       let icsContent: string | undefined;
       let calendarFilename: string | undefined;
 
@@ -55,18 +54,17 @@ export class RSVPEmailService {
         const CalendarService = await import('./calendarService');
         icsContent = await CalendarService.CalendarService.generateICSForRSVP(rsvpId);
         calendarFilename = CalendarService.CalendarService.generateFilename(event.title, rsvpId);
-        console.log(`✅ Calendar ICS file generated: ${calendarFilename}`);
       } catch (calendarError) {
-        console.error(`⚠️ Failed to generate calendar file:`, calendarError);
+        console.error('Failed to generate calendar file:', calendarError);
         // Continue without calendar attachment
       }
 
       // Generate secure token for public calendar access
       const calendarToken = Buffer.from(`${rsvp._id}:${rsvp.userId}:${rsvp.eventId}`).toString('base64');
 
-      // Generate email content
+      // Generate email content using beautiful SI3 template
       const baseUrl = process.env.API_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
-      const htmlContent = rsvpConfirmationTemplate({
+      const htmlContent = si3RSVPConfirmationTemplate({
         rsvp,
         event,
         user: rsvp.user,
@@ -77,23 +75,15 @@ export class RSVPEmailService {
       });
 
       // Prepare email data
-      // Since we're using guides@si3.space SMTP credentials, we must send FROM guides@si3.space
       const emailData: any = {
         toEmail: rsvp.user.email,
         toName: rsvp.user.email,
         subject: `RSVP Confirmation - ${event.title}`,
         senderName: 'SI3 Events Team',
-        senderEmail: 'guides@si3.space', // Must match SMTP credentials
+        senderEmail: 'guides@si3.space',
         htmlContent,
         emailType: 'rsvp'
       };
-
-      console.log(`📧 Email configuration:`, {
-        from: emailData.senderEmail,
-        to: emailData.toEmail,
-        subject: emailData.subject,
-        hasAttachment: !!(icsContent && calendarFilename)
-      });
 
       // Add calendar attachment if generated successfully
       if (icsContent && calendarFilename) {
@@ -102,11 +92,9 @@ export class RSVPEmailService {
           content: icsContent,
           contentType: 'text/calendar; charset=utf-8; method=REQUEST'
         }];
-        console.log(`📎 Calendar attachment added to email: ${calendarFilename}`);
       }
 
       // Send email
-      console.log(`📧 Sending confirmation email to ${rsvp.user.email}`);
       const result = await emailService.sendEmail(emailData);
 
       if (result.success) {

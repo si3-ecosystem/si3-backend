@@ -28,93 +28,36 @@ export const createRSVP = catchAsync(async (req: AuthenticatedRequest, res: Resp
   const { eventId, status, guestCount, dietaryRestrictions, specialRequests, contactInfo } = req.body;
   const userId = req.user?._id;
 
-  console.log(`🎫 Creating RSVP for user ${userId} and event ${eventId}`);
-  console.log(`📝 Request body:`, JSON.stringify(req.body, null, 2));
-
   if (!userId) {
     return next(new AppError("User authentication required", 401));
   }
 
-  // Step 1: Validate event and RSVP settings from Sanity
-  console.log(`🔍 Step 1: Fetching event data from Sanity for eventId: ${eventId}`);
+  // Validate event and RSVP settings from Sanity
   const event = await SanityEventService.validateEventForRSVP(eventId);
 
-  console.log(`📊 Step 1 Result - Event data from Sanity:`, JSON.stringify({
-    eventId: event._id,
-    title: event.title,
-    rsvpSettings: event.rsvpSettings,
-    hasRsvpSettings: !!event.rsvpSettings,
-    maxGuestsPerRSVP: event.rsvpSettings?.maxGuestsPerRSVP,
-    maxCapacity: event.rsvpSettings?.maxCapacity,
-    waitlistEnabled: event.rsvpSettings?.waitlistEnabled,
-    enabled: event.rsvpSettings?.enabled
-  }, null, 2));
-
-  // Step 2: Check if user already has an RSVP for this event
-  console.log(`🔍 Step 2: Checking for existing RSVP for user ${userId} and event ${eventId}`);
+  // Check if user already has an RSVP for this event
   const existingRSVP = await RSVPModel.findOne({ eventId, userId });
 
-  console.log(`📊 Step 2 Result - Existing RSVP:`, existingRSVP ? {
-    id: existingRSVP._id,
-    status: existingRSVP.status,
-    guestCount: existingRSVP.guestCount
-  } : 'None found');
-
   if (existingRSVP) {
-    console.log(`❌ User already has RSVP for this event`);
     return next(new AppError("You have already RSVP'd for this event", 400));
   }
 
-  // Step 3: Validate guest count
-  console.log(`🔍 Step 3: Validating guest count`);
-  console.log(`📊 Guest count validation:`, {
-    requestedGuestCount: guestCount,
-    maxGuestsPerRSVP: event.rsvpSettings?.maxGuestsPerRSVP,
-    isMaxGuestsNull: event.rsvpSettings?.maxGuestsPerRSVP === null,
-    isMaxGuestsUndefined: event.rsvpSettings?.maxGuestsPerRSVP === undefined,
-    typeOfMaxGuests: typeof event.rsvpSettings?.maxGuestsPerRSVP
-  });
-
-  // Handle null/undefined maxGuestsPerRSVP with default value
-  const maxGuestsPerRSVP = event.rsvpSettings?.maxGuestsPerRSVP || 5; // Default to 5 if not set
-  console.log(`📊 Using maxGuestsPerRSVP: ${maxGuestsPerRSVP} (${event.rsvpSettings?.maxGuestsPerRSVP ? 'from Sanity' : 'default value'})`);
+  // Validate guest count with fallback for null values
+  const maxGuestsPerRSVP = event.rsvpSettings?.maxGuestsPerRSVP || 5;
 
   if (guestCount > maxGuestsPerRSVP) {
-    console.log(`❌ Guest count validation failed: ${guestCount} > ${maxGuestsPerRSVP}`);
     return next(new AppError(`Maximum ${maxGuestsPerRSVP} guests allowed per RSVP`, 400));
   }
 
-  console.log(`✅ Guest count validation passed: ${guestCount} <= ${maxGuestsPerRSVP}`);
-
-  // Step 4: Check event capacity if attending
+  // Check event capacity if attending
   if (status === RSVPStatus.ATTENDING && event.rsvpSettings?.maxCapacity) {
-    console.log(`🔍 Step 4: Checking event capacity for attending status`);
-    console.log(`📊 Capacity check:`, {
-      status: status,
-      maxCapacity: event.rsvpSettings.maxCapacity,
-      requestedGuestCount: guestCount
-    });
-
     const stats = await RSVPModel.getEventStats(eventId);
-    console.log(`📊 Current event stats:`, JSON.stringify(stats, null, 2));
-
     const totalAttending = stats.totalGuests + guestCount;
-    console.log(`📊 Capacity calculation:`, {
-      currentTotalGuests: stats.totalGuests,
-      requestedGuestCount: guestCount,
-      totalAfterRSVP: totalAttending,
-      maxCapacity: event.rsvpSettings.maxCapacity,
-      wouldExceedCapacity: totalAttending > event.rsvpSettings.maxCapacity
-    });
 
     if (totalAttending > event.rsvpSettings.maxCapacity) {
-      console.log(`⚠️ Event would exceed capacity: ${totalAttending} > ${event.rsvpSettings.maxCapacity}`);
-
       if (event.rsvpSettings.waitlistEnabled) {
-        console.log(`📝 Adding to waitlist (waitlist enabled)`);
         // Add to waitlist
         const waitlistPosition = await RSVPModel.getNextWaitlistPosition(eventId);
-        console.log(`📊 Waitlist position: ${waitlistPosition}`);
 
         const rsvp = await RSVPModel.create({
           eventId,
@@ -128,12 +71,6 @@ export const createRSVP = catchAsync(async (req: AuthenticatedRequest, res: Resp
           approvalStatus: 'approved'
         });
 
-        console.log(`✅ RSVP created on waitlist:`, {
-          id: rsvp._id,
-          status: rsvp.status,
-          waitlistPosition: rsvp.waitlistPosition
-        });
-
         // Clear cache
         await redisHelper.cacheDelete(`event_stats_${eventId}`);
 
@@ -143,18 +80,12 @@ export const createRSVP = catchAsync(async (req: AuthenticatedRequest, res: Resp
           data: rsvp
         });
       } else {
-        console.log(`❌ Event at capacity and waitlist disabled`);
         return next(new AppError("Event is at full capacity", 400));
       }
-    } else {
-      console.log(`✅ Event has capacity, proceeding with regular RSVP`);
     }
-  } else {
-    console.log(`🔍 Step 4 skipped: Not attending or no max capacity set`);
   }
 
-  // Step 5: Create RSVP
-  console.log(`🔍 Step 5: Creating RSVP in MongoDB`);
+  // Create RSVP
   const rsvpData: Partial<IRSVP> = {
     eventId,
     userId,
@@ -166,58 +97,33 @@ export const createRSVP = catchAsync(async (req: AuthenticatedRequest, res: Resp
     approvalStatus: event.rsvpSettings?.requiresApproval ? 'pending' : 'approved'
   };
 
-  console.log(`📊 RSVP data to be created:`, JSON.stringify(rsvpData, null, 2));
-
   const rsvp = await RSVPModel.create(rsvpData);
-  console.log(`✅ RSVP created in MongoDB:`, {
-    id: rsvp._id,
-    eventId: rsvp.eventId,
-    userId: rsvp.userId,
-    status: rsvp.status,
-    guestCount: rsvp.guestCount,
-    approvalStatus: rsvp.approvalStatus
-  });
-
   await rsvp.populate('user', 'email roles');
   const populatedRSVP = rsvp as unknown as PopulatedRSVP;
-  console.log(`📊 RSVP populated with user data:`, {
-    id: populatedRSVP._id,
-    userEmail: populatedRSVP.user?.email,
-    userRoles: populatedRSVP.user?.roles
-  });
 
-  // Step 6: Clear cache
-  console.log(`🔍 Step 6: Clearing Redis cache`);
+  // Clear cache
   await redisHelper.cacheDelete(`event_stats_${eventId}`);
   await redisHelper.cacheDelete(`user_rsvps_${userId}`);
-  console.log(`✅ Cache cleared for event ${eventId} and user ${userId}`);
 
-  // Step 7: Send confirmation email with calendar attachment
-  console.log(`🔍 Step 7: Sending confirmation email with calendar invitation`);
+  // Send confirmation email with calendar attachment
   try {
     const RSVPEmailService = await import("../services/rsvpEmailService");
     const emailSent = await RSVPEmailService.default.sendConfirmationEmail(
       populatedRSVP._id.toString(),
-      "Thank you for your RSVP! We're excited to see you at the event. Please find the calendar invitation attached."
+      "Thank you for your RSVP! We're excited to see you at the event."
     );
 
     if (emailSent) {
-      console.log(`✅ Confirmation email sent successfully to ${populatedRSVP.user.email}`);
-
       // Update RSVP to mark confirmation email as sent
       await RSVPModel.findByIdAndUpdate(populatedRSVP._id, {
         confirmationEmailSent: true
       });
-      console.log(`📊 RSVP updated: confirmationEmailSent = true`);
-    } else {
-      console.log(`⚠️ Failed to send confirmation email to ${populatedRSVP.user.email}`);
     }
   } catch (emailError) {
-    console.error(`💥 Error sending confirmation email:`, emailError);
     // Don't fail the RSVP creation if email fails
+    console.error('Error sending confirmation email:', emailError);
   }
 
-  console.log(`🎉 RSVP creation completed successfully!`);
   res.status(201).json({
     status: "success",
     message: "RSVP created successfully",
