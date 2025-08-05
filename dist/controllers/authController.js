@@ -344,6 +344,7 @@ exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, 
 exports.updateProfile = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const user = req.user;
     const allowedFields = [
+        "email",
         "companyName",
         "companyAffiliation",
         "interests",
@@ -360,6 +361,29 @@ exports.updateProfile = (0, catchAsync_1.default)((req, res, next) => __awaiter(
             updateData[field] = req.body[field];
         }
     });
+    // Special validation for email updates
+    if (updateData.email) {
+        const newEmail = updateData.email.toLowerCase().trim();
+        // Validate email format
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+            return next(new AppError_1.default("Please provide a valid email address", 400));
+        }
+        // Prevent wallet temp emails
+        if (newEmail.includes('@wallet.temp')) {
+            return next(new AppError_1.default("Wallet temporary emails are not allowed. Please use a real email address.", 400));
+        }
+        // Check if email is already taken by another user
+        const existingUser = yield usersModel_1.default.findOne({
+            email: newEmail,
+            _id: { $ne: user._id }
+        });
+        if (existingUser) {
+            return next(new AppError_1.default("This email address is already in use by another account", 400));
+        }
+        updateData.email = newEmail;
+        // Reset verification status when email is changed
+        updateData.isVerified = false;
+    }
     // Only allow admins to update roles
     if (updateData.roles && !user.roles.includes(usersModel_1.UserRole.ADMIN)) {
         delete updateData.roles;

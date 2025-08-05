@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateAnalytics = exports.validateSendReminder = exports.validateSendEmail = exports.validateBulkUpdate = exports.validateRSVPId = exports.validateEventId = exports.validateJoinWaitlist = exports.validateGetEventAttendees = exports.validateGetUserRSVPs = exports.validateUpdateRSVP = exports.validateCreateRSVP = void 0;
+exports.validateAnalytics = exports.validateResendEmail = exports.validateSendReminder = exports.validateSendEmail = exports.validateBulkUpdate = exports.validateRSVPId = exports.validateEventId = exports.validateJoinWaitlist = exports.validateGetEventAttendees = exports.validateGetUserRSVPs = exports.validateUpdateRSVP = exports.validateCreateRSVP = void 0;
 const express_validator_1 = require("express-validator");
 const rsvpModel_1 = require("../models/rsvpModel");
 /**
@@ -261,6 +261,30 @@ exports.validateSendReminder = [
         .withMessage("Custom message must be a string")
         .isLength({ max: 1000 })
         .withMessage("Custom message cannot exceed 1000 characters")
+];
+/**
+ * Validation for resending RSVP emails
+ */
+exports.validateResendEmail = [
+    (0, express_validator_1.param)("rsvpId")
+        .notEmpty()
+        .withMessage("RSVP ID is required")
+        .isMongoId()
+        .withMessage("Invalid RSVP ID format"),
+    (0, express_validator_1.body)("emailType")
+        .optional()
+        .isIn(['confirmation', 'reminder'])
+        .withMessage("Email type must be 'confirmation' or 'reminder'"),
+    (0, express_validator_1.body)("customMessage")
+        .optional()
+        .isString()
+        .withMessage("Custom message must be a string")
+        .isLength({ max: 1000 })
+        .withMessage("Custom message cannot exceed 1000 characters"),
+    (0, express_validator_1.body)("force")
+        .optional()
+        .isBoolean()
+        .withMessage("Force flag must be a boolean")
 ];
 /**
  * Validation for analytics queries

@@ -415,6 +415,7 @@ export const updateProfile = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
     const allowedFields = [
+      "email",
       "companyName",
       "companyAffiliation",
       "interests",
@@ -432,6 +433,35 @@ export const updateProfile = catchAsync(
         updateData[field] = req.body[field];
       }
     });
+
+    // Special validation for email updates
+    if (updateData.email) {
+      const newEmail = updateData.email.toLowerCase().trim();
+
+      // Validate email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        return next(new AppError("Please provide a valid email address", 400));
+      }
+
+      // Prevent wallet temp emails
+      if (newEmail.includes('@wallet.temp')) {
+        return next(new AppError("Wallet temporary emails are not allowed. Please use a real email address.", 400));
+      }
+
+      // Check if email is already taken by another user
+      const existingUser = await UserModel.findOne({
+        email: newEmail,
+        _id: { $ne: user._id }
+      });
+
+      if (existingUser) {
+        return next(new AppError("This email address is already in use by another account", 400));
+      }
+
+      updateData.email = newEmail;
+      // Reset verification status when email is changed
+      updateData.isVerified = false;
+    }
 
     // Only allow admins to update roles
     if (updateData.roles && !user.roles.includes(UserRole.ADMIN)) {

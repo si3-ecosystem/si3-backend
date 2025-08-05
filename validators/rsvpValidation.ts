@@ -302,6 +302,34 @@ export const validateSendReminder = [
 ];
 
 /**
+ * Validation for resending RSVP emails
+ */
+export const validateResendEmail = [
+  param("rsvpId")
+    .notEmpty()
+    .withMessage("RSVP ID is required")
+    .isMongoId()
+    .withMessage("Invalid RSVP ID format"),
+
+  body("emailType")
+    .optional()
+    .isIn(['confirmation', 'reminder'])
+    .withMessage("Email type must be 'confirmation' or 'reminder'"),
+
+  body("customMessage")
+    .optional()
+    .isString()
+    .withMessage("Custom message must be a string")
+    .isLength({ max: 1000 })
+    .withMessage("Custom message cannot exceed 1000 characters"),
+
+  body("force")
+    .optional()
+    .isBoolean()
+    .withMessage("Force flag must be a boolean")
+];
+
+/**
  * Validation for analytics queries
  */
 export const validateAnalytics = [

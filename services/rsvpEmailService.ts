@@ -33,18 +33,38 @@ export class RSVPEmailService {
    * Send RSVP confirmation email
    */
   static async sendConfirmationEmail(rsvpId: string, customMessage?: string): Promise<boolean> {
+    console.log(`[RSVP EMAIL DEBUG] Starting confirmation email for RSVP: ${rsvpId}`);
+
     try {
       // Get RSVP with user data
       const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles') as PopulatedRSVP | null;
       if (!rsvp) {
+        console.error(`[RSVP EMAIL DEBUG] RSVP not found: ${rsvpId}`);
         throw new Error('RSVP not found');
       }
+
+      console.log(`[RSVP EMAIL DEBUG] RSVP found:`, {
+        rsvpId: rsvp._id,
+        userId: rsvp.userId,
+        eventId: rsvp.eventId,
+        userEmail: rsvp.user.email,
+        status: rsvp.status,
+        confirmationEmailSent: rsvp.confirmationEmailSent
+      });
 
       // Get event data from Sanity
       const event = await SanityEventService.getEventById(rsvp.eventId);
       if (!event) {
+        console.error(`[RSVP EMAIL DEBUG] Event not found in Sanity: ${rsvp.eventId}`);
         throw new Error('Event not found');
       }
+
+      console.log(`[RSVP EMAIL DEBUG] Event found:`, {
+        eventId: event._id,
+        title: event.title,
+        eventDate: event.eventDate,
+        organizer: event.organizer
+      });
 
       // Generate calendar ICS file
       let icsContent: string | undefined;
@@ -94,19 +114,36 @@ export class RSVPEmailService {
         }];
       }
 
+      console.log(`[RSVP EMAIL DEBUG] Sending email with data:`, {
+        toEmail: emailData.toEmail,
+        subject: emailData.subject,
+        senderEmail: emailData.senderEmail,
+        emailType: emailData.emailType,
+        hasAttachments: !!emailData.attachments?.length
+      });
+
       // Send email
       const result = await emailService.sendEmail(emailData);
+
+      console.log(`[RSVP EMAIL DEBUG] Email send result:`, {
+        success: result.success,
+        messageId: result.messageId,
+        smtpUsed: result.smtpUsed
+      });
 
       if (result.success) {
         // Mark confirmation email as sent
         await RSVPModel.findByIdAndUpdate(rsvpId, {
           confirmationEmailSent: true
         });
+        console.log(`[RSVP EMAIL DEBUG] Updated RSVP confirmationEmailSent flag to true`);
+      } else {
+        console.error(`[RSVP EMAIL DEBUG] Email sending failed, not updating confirmationEmailSent flag`);
       }
 
       return result.success;
     } catch (error) {
-      console.error('Error sending RSVP confirmation email:', error);
+      console.error(`[RSVP EMAIL DEBUG] Error sending confirmation email for RSVP ${rsvpId}:`, error);
       return false;
     }
   }

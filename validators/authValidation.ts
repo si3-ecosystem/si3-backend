@@ -183,3 +183,83 @@ export const validateRateLimit = [
       return true;
     }),
 ];
+
+// Profile update validation
+export const validateProfileUpdate = [
+  body("email")
+    .optional()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Please provide a valid email address")
+    .custom((value) => {
+      if (value && value.includes('@wallet.temp')) {
+        throw new Error("Wallet temporary emails are not allowed. Please use a real email address.");
+      }
+      return true;
+    }),
+
+  body("companyName")
+    .optional()
+    .isString()
+    .withMessage("Company name must be a string")
+    .isLength({ max: 200 })
+    .withMessage("Company name cannot exceed 200 characters"),
+
+  body("companyAffiliation")
+    .optional()
+    .isString()
+    .withMessage("Company affiliation must be a string")
+    .isLength({ max: 200 })
+    .withMessage("Company affiliation cannot exceed 200 characters"),
+
+  body("interests")
+    .optional()
+    .isArray()
+    .withMessage("Interests must be an array"),
+
+  body("interests.*")
+    .optional()
+    .isString()
+    .withMessage("Each interest must be a string")
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Each interest must be between 1 and 100 characters"),
+
+  body("personalValues")
+    .optional()
+    .isArray()
+    .withMessage("Personal values must be an array"),
+
+  body("personalValues.*")
+    .optional()
+    .isString()
+    .withMessage("Each personal value must be a string")
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Each personal value must be between 1 and 100 characters"),
+
+  body("details")
+    .optional()
+    .isString()
+    .withMessage("Details must be a string")
+    .isLength({ max: 2000 })
+    .withMessage("Details cannot exceed 2000 characters"),
+
+  body("newsletter")
+    .optional()
+    .isBoolean()
+    .withMessage("Newsletter preference must be a boolean"),
+
+  body("digitalLinks")
+    .optional()
+    .isArray()
+    .withMessage("Digital links must be an array"),
+
+  body("digitalLinks.*.platform")
+    .optional()
+    .isIn(['other', 'github', 'twitter', 'website', 'linkedin', 'facebook', 'instagram', 'portfolio'])
+    .withMessage("Invalid platform type"),
+
+  body("digitalLinks.*.url")
+    .optional()
+    .isURL()
+    .withMessage("Digital link URL must be a valid URL"),
+];

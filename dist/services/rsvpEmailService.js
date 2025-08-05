@@ -47,50 +47,113 @@ const protonMail_1 = require("../config/protonMail");
 const sanity_1 = require("../config/sanity");
 const rsvpModel_1 = __importStar(require("../models/rsvpModel"));
 const rsvpEmailTemplates_1 = require("../utils/rsvpEmailTemplates");
+const si3EmailTemplate_1 = require("../utils/si3EmailTemplate");
 class RSVPEmailService {
     /**
      * Send RSVP confirmation email
      */
     static sendConfirmationEmail(rsvpId, customMessage) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            console.log(`[RSVP EMAIL DEBUG] Starting confirmation email for RSVP: ${rsvpId}`);
             try {
                 // Get RSVP with user data
                 const rsvp = yield rsvpModel_1.default.findById(rsvpId).populate('user', 'email roles');
                 if (!rsvp) {
+                    console.error(`[RSVP EMAIL DEBUG] RSVP not found: ${rsvpId}`);
                     throw new Error('RSVP not found');
                 }
+                console.log(`[RSVP EMAIL DEBUG] RSVP found:`, {
+                    rsvpId: rsvp._id,
+                    userId: rsvp.userId,
+                    eventId: rsvp.eventId,
+                    userEmail: rsvp.user.email,
+                    status: rsvp.status,
+                    confirmationEmailSent: rsvp.confirmationEmailSent
+                });
                 // Get event data from Sanity
                 const event = yield sanity_1.SanityEventService.getEventById(rsvp.eventId);
                 if (!event) {
+                    console.error(`[RSVP EMAIL DEBUG] Event not found in Sanity: ${rsvp.eventId}`);
                     throw new Error('Event not found');
                 }
-                // Generate email content
-                const htmlContent = (0, rsvpEmailTemplates_1.rsvpConfirmationTemplate)({
+                console.log(`[RSVP EMAIL DEBUG] Event found:`, {
+                    eventId: event._id,
+                    title: event.title,
+                    eventDate: event.eventDate,
+                    organizer: event.organizer
+                });
+                // Generate calendar ICS file
+                let icsContent;
+                let calendarFilename;
+                try {
+                    const CalendarService = yield Promise.resolve().then(() => __importStar(require('./calendarService')));
+                    icsContent = yield CalendarService.CalendarService.generateICSForRSVP(rsvpId);
+                    calendarFilename = CalendarService.CalendarService.generateFilename(event.title, rsvpId);
+                }
+                catch (calendarError) {
+                    console.error('Failed to generate calendar file:', calendarError);
+                    // Continue without calendar attachment
+                }
+                // Generate secure token for public calendar access
+                const calendarToken = Buffer.from(`${rsvp._id}:${rsvp.userId}:${rsvp.eventId}`).toString('base64');
+                // Generate email content using beautiful SI3 template
+                const baseUrl = process.env.API_BASE_URL || process.env.BASE_URL || 'http://localhost:8080';
+                const htmlContent = (0, si3EmailTemplate_1.si3RSVPConfirmationTemplate)({
                     rsvp,
                     event,
                     user: rsvp.user,
-                    customMessage
+                    customMessage,
+                    includeCalendarLinks: true,
+                    baseUrl,
+                    calendarToken
                 });
-                // Send email
-                const result = yield protonMail_1.emailService.sendEmail({
+                // Prepare email data
+                const emailData = {
                     toEmail: rsvp.user.email,
                     toName: rsvp.user.email,
                     subject: `RSVP Confirmation - ${event.title}`,
-                    senderName: event.organizer.name,
-                    senderEmail: event.organizer.email,
+                    senderName: 'SI3 Events Team',
+                    senderEmail: 'guides@si3.space',
                     htmlContent,
                     emailType: 'rsvp'
+                };
+                // Add calendar attachment if generated successfully
+                if (icsContent && calendarFilename) {
+                    emailData.attachments = [{
+                            filename: calendarFilename,
+                            content: icsContent,
+                            contentType: 'text/calendar; charset=utf-8; method=REQUEST'
+                        }];
+                }
+                console.log(`[RSVP EMAIL DEBUG] Sending email with data:`, {
+                    toEmail: emailData.toEmail,
+                    subject: emailData.subject,
+                    senderEmail: emailData.senderEmail,
+                    emailType: emailData.emailType,
+                    hasAttachments: !!((_a = emailData.attachments) === null || _a === void 0 ? void 0 : _a.length)
+                });
+                // Send email
+                const result = yield protonMail_1.emailService.sendEmail(emailData);
+                console.log(`[RSVP EMAIL DEBUG] Email send result:`, {
+                    success: result.success,
+                    messageId: result.messageId,
+                    smtpUsed: result.smtpUsed
                 });
                 if (result.success) {
                     // Mark confirmation email as sent
                     yield rsvpModel_1.default.findByIdAndUpdate(rsvpId, {
                         confirmationEmailSent: true
                     });
+                    console.log(`[RSVP EMAIL DEBUG] Updated RSVP confirmationEmailSent flag to true`);
+                }
+                else {
+                    console.error(`[RSVP EMAIL DEBUG] Email sending failed, not updating confirmationEmailSent flag`);
                 }
                 return result.success;
             }
             catch (error) {
-                console.error('Error sending RSVP confirmation email:', error);
+                console.error(`[RSVP EMAIL DEBUG] Error sending confirmation email for RSVP ${rsvpId}:`, error);
                 return false;
             }
         });

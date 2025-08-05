@@ -175,9 +175,29 @@ class EmailService {
    * Send single email
    */
   async sendEmail(options: EmailOptions): Promise<EmailResult> {
+    const startTime = Date.now();
+    const emailType = options.emailType || "basic";
+    const smtpKey = EMAIL_TYPE_MAPPING[emailType];
+
+    // Enhanced logging for debugging
+    console.log(`[EMAIL DEBUG] Starting email send attempt:`, {
+      emailType,
+      smtpKey,
+      to: options.toEmail,
+      subject: options.subject,
+      timestamp: new Date().toISOString()
+    });
+
     this.validateEmailOptions(options);
 
-    const transporter = this.createTransporter(options.emailType || "basic");
+    let transporter;
+    try {
+      transporter = this.createTransporter(emailType);
+      console.log(`[EMAIL DEBUG] Transporter created successfully for ${emailType}`);
+    } catch (error) {
+      console.error(`[EMAIL DEBUG] Failed to create transporter for ${emailType}:`, error);
+      throw error;
+    }
 
     try {
       const mailOptions: any = {
@@ -201,18 +221,48 @@ class EmailService {
           .join(", ");
       }
 
+      console.log(`[EMAIL DEBUG] Sending email with options:`, {
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        hasHtmlContent: !!mailOptions.html,
+        htmlContentLength: mailOptions.html?.length || 0,
+        cc: mailOptions.cc,
+        bcc: mailOptions.bcc
+      });
+
       const info = await transporter.sendMail(mailOptions);
+      const duration = Date.now() - startTime;
+
+      console.log(`[EMAIL DEBUG] Email sent successfully:`, {
+        messageId: info.messageId,
+        response: info.response,
+        duration: `${duration}ms`,
+        smtpUsed: smtpKey
+      });
 
       return {
         success: true,
         messageId: info.messageId,
         response: info.response,
-        smtpUsed: EMAIL_TYPE_MAPPING[options.emailType || "basic"],
+        smtpUsed: smtpKey,
       };
     } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`[EMAIL DEBUG] Email sending failed:`, {
+        error: (error as Error).message,
+        duration: `${duration}ms`,
+        emailType,
+        smtpKey,
+        to: options.toEmail,
+        subject: options.subject
+      });
       throw new Error(`Email sending failed: ${(error as Error).message}`);
     } finally {
-      transporter.close();
+      if (transporter) {
+        transporter.close();
+        console.log(`[EMAIL DEBUG] Transporter closed for ${emailType}`);
+      }
     }
   }
 

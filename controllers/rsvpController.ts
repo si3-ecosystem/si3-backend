@@ -32,6 +32,12 @@ export const createRSVP = catchAsync(async (req: AuthenticatedRequest, res: Resp
     return next(new AppError("User authentication required", 401));
   }
 
+  // Validate user has a real email address (not wallet temp email)
+  const userEmail = req.user?.email;
+  if (!userEmail || userEmail.includes('@wallet.temp')) {
+    return next(new AppError("No valid email found for this user. Please update your email address to receive RSVP confirmations and event notifications.", 400));
+  }
+
   // Validate event and RSVP settings from Sanity
   const event = await SanityEventService.validateEventForRSVP(eventId);
 
@@ -557,6 +563,325 @@ export const getWaitlistPosition = catchAsync(async (req: AuthenticatedRequest, 
     }
   });
 });
+
+/**
+ * @desc    Debug RSVP email status and configuration
+ * @route   GET /api/rsvp/:rsvpId/email-debug
+ * @access  Private
+ */
+export const debugRSVPEmail = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const { rsvpId } = req.params;
+  const userId = req.user?._id;
+
+  if (!userId) {
+    return next(new AppError("User authentication required", 401));
+  }
+
+  // Get RSVP with user data
+  const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles') as PopulatedRSVP | null;
+  if (!rsvp) {
+    return next(new AppError("RSVP not found", 404));
+  }
+
+  // Check if user has permission to debug this RSVP
+  const isOwner = rsvp.userId.toString() === userId.toString();
+  const isAdmin = req.user?.roles?.includes(UserRole.ADMIN);
+
+  if (!isOwner && !isAdmin) {
+    return next(new AppError("Not authorized to debug this RSVP", 403));
+  }
+
+  try {
+    // Get event data from Sanity
+    const event = await SanityEventService.getEventById(rsvp.eventId);
+
+    // Get SMTP status for events email type
+    const emailService = await import("../config/protonMail");
+    const smtpStatus = emailService.default.getSMTPStatus();
+
+    // Test SMTP connection for events
+    let smtpConnectionTest = false;
+    let smtpError = null;
+    try {
+      smtpConnectionTest = await emailService.default.verifyConnection('rsvp');
+    } catch (error) {
+      smtpError = (error as Error).message;
+    }
+
+    // Check environment variables
+    const envCheck = {
+      SMTP_USERNAME_EVENTS: !!process.env.SMTP_USERNAME_EVENTS,
+      SMTP_TOKEN_EVENTS: !!process.env.SMTP_TOKEN_EVENTS,
+      SMTP_SERVER: process.env.SMTP_SERVER,
+      SMTP_PORT: process.env.SMTP_PORT,
+      API_BASE_URL: process.env.API_BASE_URL,
+      BASE_URL: process.env.BASE_URL
+    };
+
+    const debugInfo = {
+      rsvp: {
+        id: rsvp._id,
+        eventId: rsvp.eventId,
+        userId: rsvp.userId,
+        status: rsvp.status,
+        confirmationEmailSent: rsvp.confirmationEmailSent,
+        reminderEmailsSent: rsvp.reminderEmailsSent,
+        approvalStatus: rsvp.approvalStatus,
+        createdAt: rsvp.createdAt,
+        updatedAt: rsvp.updatedAt
+      },
+      user: {
+        email: rsvp.user.email,
+        emailValid: isValidUserEmail(rsvp.user.email),
+        isWalletEmail: rsvp.user.email.includes('@wallet.temp')
+      },
+      event: event ? {
+        id: event._id,
+        title: event.title,
+        eventDate: event.eventDate,
+        organizer: event.organizer
+      } : null,
+      emailConfig: {
+        smtpStatus: smtpStatus.events || smtpStatus,
+        smtpConnectionTest,
+        smtpError,
+        senderEmail: emailService.default.getSenderEmail('rsvp'),
+        emailType: 'rsvp'
+      },
+      environment: envCheck,
+      lastEmailAttempt: {
+        // This would need to be tracked in a separate log table
+        // For now, we can only show what we know from the RSVP record
+        confirmationSent: rsvp.confirmationEmailSent,
+        lastUpdated: rsvp.updatedAt
+      }
+    };
+
+    res.status(200).json({
+      status: "success",
+      message: "RSVP email debug information retrieved",
+      data: debugInfo,
+      recommendations: generateEmailDebugRecommendations(debugInfo)
+    });
+
+  } catch (error) {
+    console.error('Error in RSVP email debug:', error);
+    return next(new AppError("Failed to retrieve debug information", 500));
+  }
+});
+
+/**
+ * @desc    Resend RSVP confirmation email for debugging
+ * @route   POST /api/rsvp/:rsvpId/resend-email
+ * @access  Private
+ */
+export const resendRSVPEmail = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const { rsvpId } = req.params;
+  const { emailType = 'confirmation', customMessage, force = false } = req.body;
+  const userId = req.user?._id;
+
+  if (!userId) {
+    return next(new AppError("User authentication required", 401));
+  }
+
+  // Get RSVP with user data
+  const rsvp = await RSVPModel.findById(rsvpId).populate('user', 'email roles') as PopulatedRSVP | null;
+  if (!rsvp) {
+    return next(new AppError("RSVP not found", 404));
+  }
+
+  // Check if user has permission to resend email for this RSVP
+  const isOwner = rsvp.userId.toString() === userId.toString();
+  const isAdmin = req.user?.roles?.includes(UserRole.ADMIN);
+
+  if (!isOwner && !isAdmin) {
+    return next(new AppError("Not authorized to resend email for this RSVP", 403));
+  }
+
+  try {
+    const RSVPEmailService = await import("../services/rsvpEmailService");
+    let success = false;
+    let message = "";
+    let debugInfo: any = {};
+
+    // Capture start time for performance tracking
+    const startTime = Date.now();
+
+    switch (emailType) {
+      case 'confirmation':
+        // Reset confirmation flag if force is true
+        if (force) {
+          await RSVPModel.findByIdAndUpdate(rsvpId, {
+            confirmationEmailSent: false
+          });
+        }
+
+        success = await RSVPEmailService.default.sendConfirmationEmail(
+          rsvpId,
+          customMessage || "Debug resend: Thank you for your RSVP! We're excited to see you at the event."
+        );
+        message = success ? "Confirmation email resent successfully" : "Failed to resend confirmation email";
+        break;
+
+      case 'reminder':
+        success = await RSVPEmailService.default.sendReminderEmail(
+          rsvpId,
+          '24_hours',
+          customMessage || "Debug resend: Reminder about your upcoming event."
+        );
+        message = success ? "Reminder email resent successfully" : "Failed to resend reminder email";
+        break;
+
+      default:
+        return next(new AppError("Invalid email type. Use 'confirmation' or 'reminder'", 400));
+    }
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    // Get updated RSVP to check if flags were updated
+    const updatedRSVP = await RSVPModel.findById(rsvpId);
+
+    debugInfo = {
+      emailType,
+      success,
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString(),
+      rsvpUpdated: {
+        confirmationEmailSent: updatedRSVP?.confirmationEmailSent,
+        reminderEmailsSent: updatedRSVP?.reminderEmailsSent
+      }
+    };
+
+    res.status(success ? 200 : 500).json({
+      status: success ? "success" : "error",
+      message,
+      data: debugInfo
+    });
+
+  } catch (error) {
+    console.error('Error resending RSVP email:', error);
+    return next(new AppError(`Failed to resend email: ${(error as Error).message}`, 500));
+  }
+});
+
+/**
+ * @desc    Get current user info for debugging
+ * @route   GET /api/rsvp/debug/current-user
+ * @access  Private
+ */
+export const debugCurrentUser = catchAsync(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    return next(new AppError("User authentication required", 401));
+  }
+
+  try {
+    // Get full user data
+    const UserModel = await import("../models/usersModel");
+    const user = await UserModel.default.findById(userId);
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Get user's RSVPs for context
+    const userRSVPs = await RSVPModel.find({ userId }).sort({ createdAt: -1 }).limit(5);
+
+    const debugInfo = {
+      user: {
+        id: user._id,
+        email: user.email,
+        emailValid: isValidUserEmail(user.email),
+        isWalletEmail: user.email.includes('@wallet.temp'),
+        roles: user.roles,
+        isVerified: user.isVerified,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt
+      },
+      recentRSVPs: userRSVPs.map(rsvp => ({
+        id: rsvp._id,
+        eventId: rsvp.eventId,
+        status: rsvp.status,
+        confirmationEmailSent: rsvp.confirmationEmailSent,
+        createdAt: rsvp.createdAt
+      })),
+      recommendations: [] as string[]
+    };
+
+    // Generate recommendations
+    if (debugInfo.user.isWalletEmail) {
+      debugInfo.recommendations.push("User is using a wallet-based temporary email address. Consider updating to a real email address to receive notifications.");
+    }
+
+    if (!debugInfo.user.emailValid) {
+      debugInfo.recommendations.push("User email format is invalid. Update the email address.");
+    }
+
+    if (!debugInfo.user.isVerified) {
+      debugInfo.recommendations.push("User account is not verified. This might affect email delivery.");
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Current user debug information",
+      data: debugInfo
+    });
+
+  } catch (error) {
+    console.error('Error in current user debug:', error);
+    return next(new AppError("Failed to retrieve user debug information", 500));
+  }
+});
+
+// Helper function to check if email is valid (not wallet temp)
+function isValidUserEmail(email: string): boolean {
+  if (!email) return false;
+  if (email.includes('@wallet.temp')) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// Helper function to generate debug recommendations
+function generateEmailDebugRecommendations(debugInfo: any): string[] {
+  const recommendations: string[] = [];
+
+  // Check for wallet email first (highest priority)
+  if (debugInfo.user.email && debugInfo.user.email.includes('@wallet.temp')) {
+    recommendations.push("🚨 WALLET EMAIL DETECTED: User is using a temporary wallet email address (" + debugInfo.user.email + "). This is why emails aren't being received. The system now blocks RSVPs with wallet emails. User must update to a real email address.");
+    return recommendations; // Return early as this is the main issue
+  }
+
+  if (!debugInfo.emailConfig.smtpStatus.isConfigured) {
+    recommendations.push("SMTP configuration is incomplete. Check SMTP_USERNAME_EVENTS and SMTP_TOKEN_EVENTS environment variables.");
+  }
+
+  if (!debugInfo.emailConfig.smtpConnectionTest) {
+    recommendations.push("SMTP connection test failed. Verify SMTP credentials and server settings.");
+  }
+
+  if (!debugInfo.user.emailValid) {
+    recommendations.push("User email format appears invalid. Verify the email address.");
+  }
+
+  if (!debugInfo.event) {
+    recommendations.push("Event data could not be retrieved from Sanity. Check event ID and Sanity connection.");
+  }
+
+  if (!debugInfo.environment.SMTP_USERNAME_EVENTS || !debugInfo.environment.SMTP_TOKEN_EVENTS) {
+    recommendations.push("Missing required environment variables for events SMTP configuration.");
+  }
+
+  if (debugInfo.rsvp.confirmationEmailSent && !debugInfo.lastEmailAttempt.confirmationSent) {
+    recommendations.push("Inconsistent email status. The confirmationEmailSent flag may not be accurate.");
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push("Configuration appears correct. Email should be working. Check spam folder or try resending.");
+  }
+
+  return recommendations;
+}
 
 /**
  * @desc    Send RSVP email (confirmation, reminder, etc.)

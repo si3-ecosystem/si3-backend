@@ -63,4 +63,16 @@ router.get("/check", authController_1.checkAuth);
  * @access  Private
  */
 router.post("/refresh", protectMiddleware_1.protect, authController_1.refreshToken);
+/**
+ * @route   GET /api/auth/me
+ * @desc    Get current user profile
+ * @access  Private
+ */
+router.get("/me", protectMiddleware_1.protect, authController_1.getMe);
+/**
+ * @route   PATCH /api/auth/profile
+ * @desc    Update user profile (partial update)
+ * @access  Private
+ */
+router.patch("/profile", protectMiddleware_1.protect, authValidation_1.validateProfileUpdate, validationMiddleware_1.default, authController_1.updateProfile);
 exports.default = router;

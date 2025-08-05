@@ -6,7 +6,9 @@ const rsvpModel_1 = require("../models/rsvpModel");
  * RSVP Confirmation Email Template
  */
 const rsvpConfirmationTemplate = (data) => {
-    const { rsvp, event, user } = data;
+    var _a, _b;
+    const { rsvp, event, user, baseUrl, calendarToken } = data;
+    const apiBaseUrl = baseUrl || process.env.API_BASE_URL || 'http://localhost:8080';
     const eventDate = new Date(event.eventDate).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -106,9 +108,52 @@ const rsvpConfirmationTemplate = (data) => {
             </div>
             
             ${rsvp.status === rsvpModel_1.RSVPStatus.ATTENDING ? `
-            <p>
-                <a href="{{calendarLink}}" class="button">Add to Calendar</a>
-            </p>
+            <div style="background: #EBF8FF; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                <h3 style="margin-top: 0; color: #1E40AF;">📅 Add to Your Calendar</h3>
+                <p style="margin-bottom: 15px;">Don't forget about this event! Choose your preferred method:</p>
+
+                <!-- Primary Calendar Options -->
+                <div style="margin-bottom: 15px;">
+                    <a href="${apiBaseUrl}/api/rsvp/${rsvp._id}/calendar/public?format=google&token=${calendarToken}"
+                       class="button"
+                       style="background: #4285F4; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; margin: 5px; display: inline-block; font-weight: bold;">
+                        🗓️ Add to Google Calendar
+                    </a>
+                </div>
+
+                <!-- Instructions for Google Calendar -->
+                <p style="font-size: 13px; color: #4285F4; margin-bottom: 15px; font-style: italic;">
+                    💡 <strong>Google Calendar:</strong> Click the button above, then click "Save" in Google Calendar to add the event.
+                </p>
+
+                <!-- Alternative Options -->
+                <div style="border-top: 1px solid #E5E7EB; padding-top: 15px; margin-top: 15px;">
+                    <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Other calendar options:</p>
+                    <a href="${apiBaseUrl}/api/rsvp/${rsvp._id}/calendar/public?format=outlook&token=${calendarToken}"
+                       class="button"
+                       style="background: #0078D4; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin: 3px; font-size: 13px;">
+                        Outlook
+                    </a>
+                    <a href="${apiBaseUrl}/api/rsvp/${rsvp._id}/calendar/public?format=ics&token=${calendarToken}"
+                       class="button"
+                       style="background: #6B7280; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin: 3px; font-size: 13px;">
+                        Download ICS
+                    </a>
+                </div>
+
+                <p style="font-size: 12px; color: #666; margin-top: 15px;">📎 Calendar file (.ics) is also attached to this email for easy importing</p>
+            </div>
+
+            ${event.location.type === 'virtual' && event.location.virtualLink ? `
+            <div style="background: #F0FDF4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10B981;">
+                <h3 style="margin-top: 0; color: #059669;">🔗 Virtual Meeting Details</h3>
+                <p><strong>Join Link:</strong> <a href="${event.location.virtualLink}" style="color: #059669; text-decoration: none;">${event.location.virtualLink}</a></p>
+                ${event.location.accessInstructions ? `
+                <p><strong>Meeting Instructions:</strong><br>${event.location.accessInstructions}</p>
+                ` : ''}
+                <p style="font-size: 12px; color: #666;">💡 We recommend joining 5 minutes early to test your connection</p>
+            </div>
+            ` : ''}
             ` : ''}
             
             ${rsvp.status === rsvpModel_1.RSVPStatus.WAITLISTED ? `
@@ -128,13 +173,13 @@ const rsvpConfirmationTemplate = (data) => {
             <p>We look forward to seeing you!</p>
             
             <p>Best regards,<br>
-            ${event.organizer.name}<br>
+            ${((_a = event.organizer) === null || _a === void 0 ? void 0 : _a.name) || 'SI3 Events Team'}<br>
             SI3 Events Team</p>
         </div>
-        
+
         <div class="footer">
             <p>This is an automated message from SI3 Events. Please do not reply to this email.</p>
-            <p>For questions, contact: ${event.organizer.email}</p>
+            <p>For questions, contact: ${((_b = event.organizer) === null || _b === void 0 ? void 0 : _b.email) || 'guides@si3.space'}</p>
         </div>
     </body>
     </html>

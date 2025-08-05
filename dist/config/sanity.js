@@ -150,9 +150,8 @@ class SanityEventService {
      */
     static validateEventForRSVP(eventId) {
         return __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c, _d, _e, _f, _g;
+            var _a;
             try {
-                console.log(`🔍 Sanity: Fetching event data for eventId: ${eventId}`);
                 const event = yield exports.sanityClient.fetch(`
         *[_type == "guidesSession" && _id == $eventId][0] {
           _id,
@@ -170,70 +169,29 @@ class SanityEventService {
           featured
         }
       `, { eventId });
-                console.log(`📊 Sanity: Raw event data received:`, JSON.stringify(event, null, 2));
                 if (!event) {
-                    console.log(`❌ Sanity: Event not found for eventId: ${eventId}`);
                     throw new Error('Event not found');
                 }
-                console.log(`📊 Sanity: Event found - analyzing RSVP settings:`, {
-                    eventId: event._id,
-                    title: event.title,
-                    hasRsvpSettings: !!event.rsvpSettings,
-                    rsvpEnabled: (_a = event.rsvpSettings) === null || _a === void 0 ? void 0 : _a.enabled,
-                    maxGuestsPerRSVP: (_b = event.rsvpSettings) === null || _b === void 0 ? void 0 : _b.maxGuestsPerRSVP,
-                    maxGuestsType: typeof ((_c = event.rsvpSettings) === null || _c === void 0 ? void 0 : _c.maxGuestsPerRSVP),
-                    maxCapacity: (_d = event.rsvpSettings) === null || _d === void 0 ? void 0 : _d.maxCapacity,
-                    waitlistEnabled: (_e = event.rsvpSettings) === null || _e === void 0 ? void 0 : _e.waitlistEnabled,
-                    requiresApproval: (_f = event.rsvpSettings) === null || _f === void 0 ? void 0 : _f.requiresApproval
-                });
-                // Guide sessions don't have isPublished field, so we skip this check
-                // You can add a published field to your guidesSession schema if needed
-                console.log(`🔍 Sanity: Validating RSVP settings...`);
-                if (!((_g = event.rsvpSettings) === null || _g === void 0 ? void 0 : _g.enabled)) {
-                    console.log(`❌ Sanity: RSVP not enabled for this event`);
+                // Validate RSVP settings
+                if (!((_a = event.rsvpSettings) === null || _a === void 0 ? void 0 : _a.enabled)) {
                     throw new Error('RSVP is not enabled for this event');
                 }
-                console.log(`✅ Sanity: RSVP is enabled`);
                 // Check if RSVP deadline has passed
                 if (event.rsvpSettings.rsvpDeadline) {
                     const deadline = new Date(event.rsvpSettings.rsvpDeadline);
-                    const now = new Date();
-                    console.log(`🔍 Sanity: Checking RSVP deadline:`, {
-                        deadline: deadline.toISOString(),
-                        now: now.toISOString(),
-                        hasDeadlinePassed: deadline < now
-                    });
-                    if (deadline < now) {
-                        console.log(`❌ Sanity: RSVP deadline has passed`);
+                    if (deadline < new Date()) {
                         throw new Error('RSVP deadline has passed');
                     }
-                    console.log(`✅ Sanity: RSVP deadline not passed`);
-                }
-                else {
-                    console.log(`📊 Sanity: No RSVP deadline set`);
                 }
                 // Check if session has already occurred
                 const eventDate = new Date(event.eventDate);
-                const now = new Date();
-                console.log(`🔍 Sanity: Checking event date:`, {
-                    eventDate: eventDate.toISOString(),
-                    now: now.toISOString(),
-                    isEventInPast: eventDate < now
-                });
-                if (eventDate < now) {
-                    console.log(`❌ Sanity: Cannot RSVP for past sessions`);
+                if (eventDate < new Date()) {
                     throw new Error('Cannot RSVP for past sessions');
                 }
-                console.log(`✅ Sanity: Event is in the future`);
-                console.log(`✅ Sanity: Event validation completed successfully`);
                 return event;
             }
             catch (error) {
-                console.error(`💥 Sanity: Error validating event for RSVP:`, {
-                    eventId,
-                    error: error instanceof Error ? error.message : String(error),
-                    stack: error instanceof Error ? error.stack : undefined
-                });
+                console.error('Error validating event for RSVP:', error);
                 throw error;
             }
         });

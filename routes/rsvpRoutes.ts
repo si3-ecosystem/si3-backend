@@ -15,7 +15,10 @@ import {
   sendEventReminder,
   downloadCalendarInvitation,
   downloadPublicCalendarInvitation,
-  getCalendarLinks
+  getCalendarLinks,
+  debugRSVPEmail,
+  resendRSVPEmail,
+  debugCurrentUser
 } from "../controllers/rsvpController";
 
 import {
@@ -25,7 +28,8 @@ import {
   validateGetUserRSVPs,
   validateGetEventAttendees,
   validateSendEmail,
-  validateSendReminder
+  validateSendReminder,
+  validateResendEmail
 } from "../validators/rsvpValidation";
 
 import { protect } from "../middleware/protectMiddleware";
@@ -206,6 +210,41 @@ router.get(
   "/:id/calendar-links",
   protect,
   getCalendarLinks
+);
+
+/**
+ * @route   GET /api/rsvp/:rsvpId/email-debug
+ * @desc    Debug RSVP email status and configuration
+ * @access  Private
+ */
+router.get(
+  "/:rsvpId/email-debug",
+  protect,
+  debugRSVPEmail
+);
+
+/**
+ * @route   POST /api/rsvp/:rsvpId/resend-email
+ * @desc    Resend RSVP confirmation email for debugging
+ * @access  Private
+ */
+router.post(
+  "/:rsvpId/resend-email",
+  protect,
+  validateResendEmail,
+  validationMiddleware,
+  resendRSVPEmail
+);
+
+/**
+ * @route   GET /api/rsvp/debug/current-user
+ * @desc    Get current user info for debugging
+ * @access  Private
+ */
+router.get(
+  "/debug/current-user",
+  protect,
+  debugCurrentUser
 );
 
 export default router;

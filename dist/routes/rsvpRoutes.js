@@ -82,6 +82,12 @@ router.post("/send-email", protectMiddleware_1.protect, rsvpValidation_1.validat
  */
 router.post("/send-reminder", protectMiddleware_1.protect, rsvpValidation_1.validateSendReminder, validationMiddleware_1.default, rsvpController_1.sendEventReminder);
 /**
+ * @route   GET /api/rsvp/:id/calendar/public
+ * @desc    Download calendar invitation for RSVP (Public with token)
+ * @access  Public
+ */
+router.get("/:id/calendar/public", rsvpController_1.downloadPublicCalendarInvitation);
+/**
  * @route   GET /api/rsvp/:id/calendar
  * @desc    Download calendar invitation for RSVP
  * @access  Private
@@ -93,4 +99,22 @@ router.get("/:id/calendar", protectMiddleware_1.protect, rsvpController_1.downlo
  * @access  Private
  */
 router.get("/:id/calendar-links", protectMiddleware_1.protect, rsvpController_1.getCalendarLinks);
+/**
+ * @route   GET /api/rsvp/:rsvpId/email-debug
+ * @desc    Debug RSVP email status and configuration
+ * @access  Private
+ */
+router.get("/:rsvpId/email-debug", protectMiddleware_1.protect, rsvpController_1.debugRSVPEmail);
+/**
+ * @route   POST /api/rsvp/:rsvpId/resend-email
+ * @desc    Resend RSVP confirmation email for debugging
+ * @access  Private
+ */
+router.post("/:rsvpId/resend-email", protectMiddleware_1.protect, rsvpValidation_1.validateResendEmail, validationMiddleware_1.default, rsvpController_1.resendRSVPEmail);
+/**
+ * @route   GET /api/rsvp/debug/current-user
+ * @desc    Get current user info for debugging
+ * @access  Private
+ */
+router.get("/debug/current-user", protectMiddleware_1.protect, rsvpController_1.debugCurrentUser);
 exports.default = router;
