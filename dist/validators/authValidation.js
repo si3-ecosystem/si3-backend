@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateProfileUpdate = exports.validateRateLimit = exports.validateUserProfile = exports.validateConnectWallet = exports.validateWalletSignatureVerification = exports.validateWalletSignatureRequest = exports.validateOTPVerification = exports.validateEmailOTP = void 0;
+exports.validateEmailVerification = exports.validateProfileUpdate = exports.validateRateLimit = exports.validateUserProfile = exports.validateConnectWallet = exports.validateWalletSignatureVerification = exports.validateWalletSignatureRequest = exports.validateOTPVerification = exports.validateEmailOTP = void 0;
 const ethers_1 = require("ethers");
 const express_validator_1 = require("express-validator");
 // Email validation for OTP request
@@ -175,6 +175,15 @@ exports.validateProfileUpdate = [
         }
         return true;
     }),
+    (0, express_validator_1.body)("username")
+        .optional()
+        .isString()
+        .withMessage("Username must be a string")
+        .isLength({ min: 3, max: 30 })
+        .withMessage("Username must be between 3 and 30 characters long")
+        .matches(/^[a-zA-Z0-9_-]+$/)
+        .withMessage("Username can only contain letters, numbers, underscores, and hyphens")
+        .toLowerCase(),
     (0, express_validator_1.body)("companyName")
         .optional()
         .isString()
@@ -229,4 +238,14 @@ exports.validateProfileUpdate = [
         .optional()
         .isURL()
         .withMessage("Digital link URL must be a valid URL"),
+];
+// Email verification validation
+exports.validateEmailVerification = [
+    (0, express_validator_1.body)("otp")
+        .notEmpty()
+        .withMessage("Verification code is required")
+        .isNumeric()
+        .withMessage("Verification code must be numeric")
+        .isLength({ min: 6, max: 6 })
+        .withMessage("Verification code must be 6 digits"),
 ];

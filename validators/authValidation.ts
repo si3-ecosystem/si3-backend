@@ -198,6 +198,16 @@ export const validateProfileUpdate = [
       return true;
     }),
 
+  body("username")
+    .optional()
+    .isString()
+    .withMessage("Username must be a string")
+    .isLength({ min: 3, max: 30 })
+    .withMessage("Username must be between 3 and 30 characters long")
+    .matches(/^[a-zA-Z0-9_-]+$/)
+    .withMessage("Username can only contain letters, numbers, underscores, and hyphens")
+    .toLowerCase(),
+
   body("companyName")
     .optional()
     .isString()
@@ -262,4 +272,15 @@ export const validateProfileUpdate = [
     .optional()
     .isURL()
     .withMessage("Digital link URL must be a valid URL"),
+];
+
+// Email verification validation
+export const validateEmailVerification = [
+  body("otp")
+    .notEmpty()
+    .withMessage("Verification code is required")
+    .isNumeric()
+    .withMessage("Verification code must be numeric")
+    .isLength({ min: 6, max: 6 })
+    .withMessage("Verification code must be 6 digits"),
 ];

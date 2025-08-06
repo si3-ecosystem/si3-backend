@@ -10,6 +10,8 @@ import {
   verifyEmailOTP,
   updateProfile,
   disconnectWallet,
+  sendEmailVerification,
+  verifyEmailVerification,
   verifyWalletSignature,
   requestWalletSignature,
 } from "../controllers/authController";
@@ -19,11 +21,13 @@ import {
   validateConnectWallet,
   validateOTPVerification,
   validateProfileUpdate,
+  validateEmailVerification,
   validateWalletSignatureRequest,
   validateWalletSignatureVerification,
 } from "../validators/authValidation";
 
 import { protect } from "../middleware/protectMiddleware";
+import { protectUnverified } from "../middleware/protectUnverifiedMiddleware";
 import validationMiddleware from "../middleware/validationMiddleware";
 
 const router = Router();
@@ -141,5 +145,21 @@ router.get("/me", protect, getMe);
  */
 
 router.patch("/profile", protect, validateProfileUpdate, validationMiddleware, updateProfile);
+
+/**
+ * @route   POST /api/auth/send-verification
+ * @desc    Send email verification OTP to current user
+ * @access  Private (allows unverified users)
+ */
+
+router.post("/send-verification", protectUnverified, sendEmailVerification);
+
+/**
+ * @route   POST /api/auth/verify-email
+ * @desc    Verify email with OTP for current user
+ * @access  Private (allows unverified users)
+ */
+
+router.post("/verify-email", protectUnverified, validateEmailVerification, validationMiddleware, verifyEmailVerification);
 
 export default router;

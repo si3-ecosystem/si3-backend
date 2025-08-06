@@ -66,6 +66,7 @@ class AuthUtils {
         const userResponse = {
             id: user._id,
             email: user.email,
+            username: user.username,
             roles: user.roles,
             interests: user.interests,
             lastLogin: user.lastLogin,

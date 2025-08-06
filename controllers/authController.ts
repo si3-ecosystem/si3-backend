@@ -373,6 +373,105 @@ export const logout = catchAsync(
 );
 
 /**
+ * Send email verification OTP to current user
+ */
+export const sendEmailVerification = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const user = req.user as IUser;
+    const email = user.email;
+
+    // Check if user already verified
+    if (user.isVerified) {
+      return next(new AppError("Email is already verified", 400));
+    }
+
+    // Check rate limit
+    const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${email}`;
+    const rateLimitCheck = await redisHelper.cacheGet(rateLimitKey);
+
+    if (rateLimitCheck) {
+      return next(
+        new AppError(
+          `Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`,
+          429
+        )
+      );
+    }
+
+    // Generate OTP
+    const otp = authUtils.generateOTP(6);
+
+    // Store OTP in Redis with verification prefix
+    const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
+    await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
+
+    // Set rate limit
+    await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+
+    // Create verification email template
+    const verificationHtml = otpEmailTemplate(otp, email, "Email Verification");
+
+    // Send verification email
+    await emailService.sendEmail({
+      senderName: "SI U Verification",
+      senderEmail: "guides@si3.space",
+      toName: email,
+      toEmail: email,
+      subject: `${otp}: Verify Your Email Address`,
+      htmlContent: verificationHtml,
+      emailType: "rsvp",
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Verification code sent to your email address",
+      data: {
+        email,
+        expiresIn: OTP_TTL_SECONDS,
+      },
+    });
+  }
+);
+
+/**
+ * Verify email with OTP for current user
+ */
+export const verifyEmailVerification = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { otp } = req.body;
+    const user = req.user as IUser;
+    const email = user.email;
+
+    // Check if user already verified
+    if (user.isVerified) {
+      return next(new AppError("Email is already verified", 400));
+    }
+
+    // Get OTP from Redis with verification prefix
+    const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
+    const storedOTP = await redisHelper.cacheGet(otpKey);
+
+    if (!storedOTP) {
+      return next(new AppError("Verification code has expired or is invalid", 400));
+    }
+
+    if (Number(storedOTP) !== Number(otp)) {
+      return next(new AppError("Invalid verification code", 400));
+    }
+
+    // Clear OTP from Redis
+    await redisHelper.cacheDelete(otpKey);
+
+    // Update user verification status
+    user.isVerified = true;
+    await user.save({ validateBeforeSave: false });
+
+    // Generate new token with updated verification status
+    authUtils.createSendToken(user, 200, res, "Email verified successfully");
+  }
+);
+
+/**
  * Get current user profile
  */
 
@@ -416,6 +515,7 @@ export const updateProfile = catchAsync(
     const user = req.user as IUser;
     const allowedFields = [
       "email",
+      "username",
       "companyName",
       "companyAffiliation",
       "interests",
@@ -461,6 +561,33 @@ export const updateProfile = catchAsync(
       updateData.email = newEmail;
       // Reset verification status when email is changed
       updateData.isVerified = false;
+    }
+
+    // Special validation for username updates
+    if (updateData.username) {
+      const newUsername = updateData.username.toLowerCase().trim();
+
+      // Validate username format
+      if (!/^[a-zA-Z0-9_-]+$/.test(newUsername)) {
+        return next(new AppError("Username can only contain letters, numbers, underscores, and hyphens", 400));
+      }
+
+      // Validate username length
+      if (newUsername.length < 3 || newUsername.length > 30) {
+        return next(new AppError("Username must be between 3 and 30 characters long", 400));
+      }
+
+      // Check if username is already taken by another user
+      const existingUser = await UserModel.findOne({
+        username: newUsername,
+        _id: { $ne: user._id }
+      });
+
+      if (existingUser) {
+        return next(new AppError("This username is already taken", 400));
+      }
+
+      updateData.username = newUsername;
     }
 
     // Only allow admins to update roles
