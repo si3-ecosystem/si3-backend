@@ -108,6 +108,10 @@ class AuthUtils {
       wallet_address: user.wallet_address,
       personalValues: user.personalValues,
       companyAffiliation: user.companyAffiliation,
+      // New fields for settings page
+      notificationSettings: user.notificationSettings,
+      walletInfo: user.walletInfo,
+      settingsUpdatedAt: user.settingsUpdatedAt,
     };
 
     res.status(statusCode).json({

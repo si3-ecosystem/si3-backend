@@ -60,7 +60,8 @@ const NONCE_KEY_PREFIX = "auth:nonce:";
 const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "60", 10); // 1 minute
+const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS ||
+    (process.env.NODE_ENV === "development" ? "10" : "60"), 10); // 10 seconds in development, 1 minute in production
 /**
  * Send OTP to email for passwordless login
  */
@@ -386,9 +387,21 @@ exports.verifyEmailVerification = (0, catchAsync_1.default)((req, res, next) => 
  */
 exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const user = req.user;
+    // Ensure default notification settings exist
+    if (!user.notificationSettings) {
+        user.notificationSettings = {
+            emailUpdates: true,
+            sessionReminder: true,
+            marketingEmails: false,
+            weeklyDigest: true,
+            eventAnnouncements: true,
+        };
+        yield user.save({ validateBeforeSave: false });
+    }
     const userResponse = {
         id: user._id,
         email: user.email,
+        username: user.username,
         roles: user.roles,
         isVerified: user.isVerified,
         companyName: user.companyName,
@@ -402,6 +415,10 @@ exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, 
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        // New fields for settings page
+        notificationSettings: user.notificationSettings,
+        walletInfo: user.walletInfo,
+        settingsUpdatedAt: user.settingsUpdatedAt,
     };
     res.status(200).json({
         status: "success",
@@ -453,13 +470,19 @@ exports.updateProfile = (0, catchAsync_1.default)((req, res, next) => __awaiter(
         if (existingUser) {
             return next(new AppError_1.default("This email address is already in use by another account", 400));
         }
+        // Only reset verification status if email actually changed
+        if (newEmail !== user.email) {
+            updateData.isVerified = false;
+            console.log(`[PROFILE UPDATE] Email changed from ${user.email} to ${newEmail}, resetting verification status`);
+        }
+        else {
+            console.log(`[PROFILE UPDATE] Email unchanged (${newEmail}), preserving verification status`);
+        }
         updateData.email = newEmail;
-        // Reset verification status when email is changed
-        updateData.isVerified = false;
     }
     // Special validation for username updates
     if (updateData.username) {
-        const newUsername = updateData.username.toLowerCase().trim();
+        const newUsername = updateData.username.trim();
         // Validate username format
         if (!/^[a-zA-Z0-9_-]+$/.test(newUsername)) {
             return next(new AppError_1.default("Username can only contain letters, numbers, underscores, and hyphens", 400));
@@ -468,15 +491,16 @@ exports.updateProfile = (0, catchAsync_1.default)((req, res, next) => __awaiter(
         if (newUsername.length < 3 || newUsername.length > 30) {
             return next(new AppError_1.default("Username must be between 3 and 30 characters long", 400));
         }
-        // Check if username is already taken by another user
+        // Check if username is already taken by another user (case-insensitive check)
         const existingUser = yield usersModel_1.default.findOne({
-            username: newUsername,
+            username: { $regex: new RegExp(`^${newUsername}$`, 'i') },
             _id: { $ne: user._id }
         });
         if (existingUser) {
             return next(new AppError_1.default("This username is already taken", 400));
         }
-        updateData.username = newUsername;
+        updateData.username = newUsername; // Preserve original case
+        console.log(`[PROFILE UPDATE] Username updated to: ${newUsername} (preserving case)`);
     }
     // Only allow admins to update roles
     if (updateData.roles && !user.roles.includes(usersModel_1.UserRole.ADMIN)) {

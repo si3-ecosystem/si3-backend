@@ -11,6 +11,7 @@ import authRouter from "./routes/authRoutes";
 import emailRouter from "./routes/emailRoutes";
 import commentRouter from "./routes/commentRoutes";
 import rsvpRouter from "./routes/rsvpRoutes";
+import userRouter from "./routes/userRoutes";
 
 import redis from "./config/redis";
 import { checkConnection, connectDB } from "./config/db";
@@ -72,6 +73,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/email", emailRouter);
 app.use("/api/comments", commentRouter);
 app.use("/api/rsvp", rsvpRouter);
+app.use("/api/user", userRouter);
 
 // Handle 404 errors
 app.use(notFoundHandler);

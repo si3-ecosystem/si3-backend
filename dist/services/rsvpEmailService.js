@@ -57,8 +57,8 @@ class RSVPEmailService {
             var _a;
             console.log(`[RSVP EMAIL DEBUG] Starting confirmation email for RSVP: ${rsvpId}`);
             try {
-                // Get RSVP with user data
-                const rsvp = yield rsvpModel_1.default.findById(rsvpId).populate('user', 'email roles');
+                // Get RSVP with user data including notification settings
+                const rsvp = yield rsvpModel_1.default.findById(rsvpId).populate('user', 'email roles notificationSettings');
                 if (!rsvp) {
                     console.error(`[RSVP EMAIL DEBUG] RSVP not found: ${rsvpId}`);
                     throw new Error('RSVP not found');
@@ -71,6 +71,16 @@ class RSVPEmailService {
                     status: rsvp.status,
                     confirmationEmailSent: rsvp.confirmationEmailSent
                 });
+                // Check user notification preferences
+                const userNotificationSettings = rsvp.user.notificationSettings;
+                if (userNotificationSettings && !userNotificationSettings.emailUpdates) {
+                    console.log(`[RSVP EMAIL DEBUG] User has disabled email updates, skipping confirmation email`);
+                    // Mark as sent even though we didn't send it (user preference)
+                    yield rsvpModel_1.default.findByIdAndUpdate(rsvpId, {
+                        confirmationEmailSent: true
+                    });
+                    return true;
+                }
                 // Get event data from Sanity
                 const event = yield sanity_1.SanityEventService.getEventById(rsvp.eventId);
                 if (!event) {
@@ -164,8 +174,8 @@ class RSVPEmailService {
     static sendReminderEmail(rsvpId, reminderType, customMessage) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                // Get RSVP with user data
-                const rsvp = yield rsvpModel_1.default.findById(rsvpId).populate('user', 'email roles');
+                // Get RSVP with user data including notification settings
+                const rsvp = yield rsvpModel_1.default.findById(rsvpId).populate('user', 'email roles notificationSettings');
                 if (!rsvp) {
                     throw new Error('RSVP not found');
                 }
@@ -176,6 +186,16 @@ class RSVPEmailService {
                 // Check if this reminder type was already sent
                 if (rsvp.reminderEmailsSent.includes(reminderType)) {
                     return false;
+                }
+                // Check user notification preferences for reminders
+                const userNotificationSettings = rsvp.user.notificationSettings;
+                if (userNotificationSettings && !userNotificationSettings.sessionReminder) {
+                    console.log(`[RSVP EMAIL DEBUG] User has disabled session reminders, skipping reminder email`);
+                    // Mark as sent even though we didn't send it (user preference)
+                    yield rsvpModel_1.default.findByIdAndUpdate(rsvpId, {
+                        $push: { reminderEmailsSent: reminderType }
+                    });
+                    return true;
                 }
                 // Get event data from Sanity
                 const event = yield sanity_1.SanityEventService.getEventById(rsvp.eventId);

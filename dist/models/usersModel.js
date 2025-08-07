@@ -99,7 +99,7 @@ const userSchema = new mongoose_1.Schema({
     username: {
         type: String,
         trim: true,
-        lowercase: true,
+        // Removed lowercase: true to preserve original case
         minlength: [3, "Username must be at least 3 characters long"],
         maxlength: [30, "Username cannot exceed 30 characters"],
         validate: {
@@ -201,6 +201,62 @@ const userSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    // New fields for settings page
+    notificationSettings: {
+        emailUpdates: {
+            type: Boolean,
+            default: true,
+        },
+        sessionReminder: {
+            type: Boolean,
+            default: true,
+        },
+        marketingEmails: {
+            type: Boolean,
+            default: false,
+        },
+        weeklyDigest: {
+            type: Boolean,
+            default: true,
+        },
+        eventAnnouncements: {
+            type: Boolean,
+            default: true,
+        },
+    },
+    walletInfo: {
+        address: {
+            type: String,
+            sparse: true,
+            validate: {
+                validator: function (address) {
+                    if (!address)
+                        return true; // Optional field
+                    return /^0x[a-fA-F0-9]{40}$/.test(address);
+                },
+                message: "Please provide a valid Ethereum address",
+            },
+        },
+        connectedWallet: {
+            type: String,
+            enum: ["Zerion", "MetaMask", "WalletConnect", "Other"],
+        },
+        network: {
+            type: String,
+            enum: ["Mainnet", "Polygon", "Arbitrum", "Base", "Optimism"],
+            default: "Mainnet",
+        },
+        connectedAt: {
+            type: Date,
+        },
+        lastUsed: {
+            type: Date,
+        },
+    },
+    settingsUpdatedAt: {
+        type: Date,
+        default: Date.now,
+    },
 }, {
     timestamps: true,
     collection: "si3Users",
@@ -211,6 +267,8 @@ userSchema.index({ roles: 1 });
 userSchema.index({ wallet_address: 1 }, { sparse: true });
 userSchema.index({ isVerified: 1, createdAt: -1 });
 userSchema.index({ lastLogin: -1 });
+userSchema.index({ "walletInfo.address": 1 }, { sparse: true });
+userSchema.index({ settingsUpdatedAt: -1 });
 // Essential pre-save middleware
 userSchema.pre("save", function (next) {
     // Clean interests array

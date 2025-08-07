@@ -23,7 +23,11 @@ const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "60", 10); // 1 minute
+const RATE_LIMIT_SECONDS = parseInt(
+  process.env.RATE_LIMIT_SECONDS ||
+  (process.env.NODE_ENV === "development" ? "10" : "60"),
+  10
+); // 10 seconds in development, 1 minute in production
 
 /**
  * Send OTP to email for passwordless login
@@ -479,9 +483,22 @@ export const getMe = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
 
+    // Ensure default notification settings exist
+    if (!user.notificationSettings) {
+      user.notificationSettings = {
+        emailUpdates: true,
+        sessionReminder: true,
+        marketingEmails: false,
+        weeklyDigest: true,
+        eventAnnouncements: true,
+      };
+      await user.save({ validateBeforeSave: false });
+    }
+
     const userResponse = {
       id: user._id,
       email: user.email,
+      username: user.username,
       roles: user.roles,
       isVerified: user.isVerified,
       companyName: user.companyName,
@@ -495,6 +512,10 @@ export const getMe = catchAsync(
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      // New fields for settings page
+      notificationSettings: user.notificationSettings,
+      walletInfo: user.walletInfo,
+      settingsUpdatedAt: user.settingsUpdatedAt,
     };
 
     res.status(200).json({
@@ -558,14 +579,20 @@ export const updateProfile = catchAsync(
         return next(new AppError("This email address is already in use by another account", 400));
       }
 
+      // Only reset verification status if email actually changed
+      if (newEmail !== user.email) {
+        updateData.isVerified = false;
+        console.log(`[PROFILE UPDATE] Email changed from ${user.email} to ${newEmail}, resetting verification status`);
+      } else {
+        console.log(`[PROFILE UPDATE] Email unchanged (${newEmail}), preserving verification status`);
+      }
+
       updateData.email = newEmail;
-      // Reset verification status when email is changed
-      updateData.isVerified = false;
     }
 
     // Special validation for username updates
     if (updateData.username) {
-      const newUsername = updateData.username.toLowerCase().trim();
+      const newUsername = updateData.username.trim();
 
       // Validate username format
       if (!/^[a-zA-Z0-9_-]+$/.test(newUsername)) {
@@ -577,9 +604,9 @@ export const updateProfile = catchAsync(
         return next(new AppError("Username must be between 3 and 30 characters long", 400));
       }
 
-      // Check if username is already taken by another user
+      // Check if username is already taken by another user (case-insensitive check)
       const existingUser = await UserModel.findOne({
-        username: newUsername,
+        username: { $regex: new RegExp(`^${newUsername}$`, 'i') },
         _id: { $ne: user._id }
       });
 
@@ -587,7 +614,8 @@ export const updateProfile = catchAsync(
         return next(new AppError("This username is already taken", 400));
       }
 
-      updateData.username = newUsername;
+      updateData.username = newUsername; // Preserve original case
+      console.log(`[PROFILE UPDATE] Username updated to: ${newUsername} (preserving case)`);
     }
 
     // Only allow admins to update roles
