@@ -23,7 +23,11 @@ const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "60", 10); // 1 minute
+const RATE_LIMIT_SECONDS = parseInt(
+  process.env.RATE_LIMIT_SECONDS ||
+  (process.env.NODE_ENV === "development" ? "10" : "60"),
+  10
+); // 10 seconds in development, 1 minute in production
 
 /**
  * Send OTP to email for passwordless login
@@ -373,6 +377,105 @@ export const logout = catchAsync(
 );
 
 /**
+ * Send email verification OTP to current user
+ */
+export const sendEmailVerification = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const user = req.user as IUser;
+    const email = user.email;
+
+    // Check if user already verified
+    if (user.isVerified) {
+      return next(new AppError("Email is already verified", 400));
+    }
+
+    // Check rate limit
+    const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${email}`;
+    const rateLimitCheck = await redisHelper.cacheGet(rateLimitKey);
+
+    if (rateLimitCheck) {
+      return next(
+        new AppError(
+          `Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`,
+          429
+        )
+      );
+    }
+
+    // Generate OTP
+    const otp = authUtils.generateOTP(6);
+
+    // Store OTP in Redis with verification prefix
+    const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
+    await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
+
+    // Set rate limit
+    await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+
+    // Create verification email template
+    const verificationHtml = otpEmailTemplate(otp, email, "Email Verification");
+
+    // Send verification email
+    await emailService.sendEmail({
+      senderName: "SI U Verification",
+      senderEmail: "guides@si3.space",
+      toName: email,
+      toEmail: email,
+      subject: `${otp}: Verify Your Email Address`,
+      htmlContent: verificationHtml,
+      emailType: "rsvp",
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Verification code sent to your email address",
+      data: {
+        email,
+        expiresIn: OTP_TTL_SECONDS,
+      },
+    });
+  }
+);
+
+/**
+ * Verify email with OTP for current user
+ */
+export const verifyEmailVerification = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { otp } = req.body;
+    const user = req.user as IUser;
+    const email = user.email;
+
+    // Check if user already verified
+    if (user.isVerified) {
+      return next(new AppError("Email is already verified", 400));
+    }
+
+    // Get OTP from Redis with verification prefix
+    const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
+    const storedOTP = await redisHelper.cacheGet(otpKey);
+
+    if (!storedOTP) {
+      return next(new AppError("Verification code has expired or is invalid", 400));
+    }
+
+    if (Number(storedOTP) !== Number(otp)) {
+      return next(new AppError("Invalid verification code", 400));
+    }
+
+    // Clear OTP from Redis
+    await redisHelper.cacheDelete(otpKey);
+
+    // Update user verification status
+    user.isVerified = true;
+    await user.save({ validateBeforeSave: false });
+
+    // Generate new token with updated verification status
+    authUtils.createSendToken(user, 200, res, "Email verified successfully");
+  }
+);
+
+/**
  * Get current user profile
  */
 
@@ -380,9 +483,22 @@ export const getMe = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
 
+    // Ensure default notification settings exist
+    if (!user.notificationSettings) {
+      user.notificationSettings = {
+        emailUpdates: true,
+        sessionReminder: true,
+        marketingEmails: false,
+        weeklyDigest: true,
+        eventAnnouncements: true,
+      };
+      await user.save({ validateBeforeSave: false });
+    }
+
     const userResponse = {
       id: user._id,
       email: user.email,
+      username: user.username,
       roles: user.roles,
       isVerified: user.isVerified,
       companyName: user.companyName,
@@ -396,6 +512,10 @@ export const getMe = catchAsync(
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      // New fields for settings page
+      notificationSettings: user.notificationSettings,
+      walletInfo: user.walletInfo,
+      settingsUpdatedAt: user.settingsUpdatedAt,
     };
 
     res.status(200).json({
@@ -415,6 +535,8 @@ export const updateProfile = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
     const allowedFields = [
+      "email",
+      "username",
       "companyName",
       "companyAffiliation",
       "interests",
@@ -432,6 +554,69 @@ export const updateProfile = catchAsync(
         updateData[field] = req.body[field];
       }
     });
+
+    // Special validation for email updates
+    if (updateData.email) {
+      const newEmail = updateData.email.toLowerCase().trim();
+
+      // Validate email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        return next(new AppError("Please provide a valid email address", 400));
+      }
+
+      // Prevent wallet temp emails
+      if (newEmail.includes('@wallet.temp')) {
+        return next(new AppError("Wallet temporary emails are not allowed. Please use a real email address.", 400));
+      }
+
+      // Check if email is already taken by another user
+      const existingUser = await UserModel.findOne({
+        email: newEmail,
+        _id: { $ne: user._id }
+      });
+
+      if (existingUser) {
+        return next(new AppError("This email address is already in use by another account", 400));
+      }
+
+      // Only reset verification status if email actually changed
+      if (newEmail !== user.email) {
+        updateData.isVerified = false;
+        console.log(`[PROFILE UPDATE] Email changed from ${user.email} to ${newEmail}, resetting verification status`);
+      } else {
+        console.log(`[PROFILE UPDATE] Email unchanged (${newEmail}), preserving verification status`);
+      }
+
+      updateData.email = newEmail;
+    }
+
+    // Special validation for username updates
+    if (updateData.username) {
+      const newUsername = updateData.username.trim();
+
+      // Validate username format
+      if (!/^[a-zA-Z0-9_-]+$/.test(newUsername)) {
+        return next(new AppError("Username can only contain letters, numbers, underscores, and hyphens", 400));
+      }
+
+      // Validate username length
+      if (newUsername.length < 3 || newUsername.length > 30) {
+        return next(new AppError("Username must be between 3 and 30 characters long", 400));
+      }
+
+      // Check if username is already taken by another user (case-insensitive check)
+      const existingUser = await UserModel.findOne({
+        username: { $regex: new RegExp(`^${newUsername}$`, 'i') },
+        _id: { $ne: user._id }
+      });
+
+      if (existingUser) {
+        return next(new AppError("This username is already taken", 400));
+      }
+
+      updateData.username = newUsername; // Preserve original case
+      console.log(`[PROFILE UPDATE] Username updated to: ${newUsername} (preserving case)`);
+    }
 
     // Only allow admins to update roles
     if (updateData.roles && !user.roles.includes(UserRole.ADMIN)) {

@@ -68,7 +68,7 @@ const protect = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
             return next(error);
         }
         // 3) Check if user still exists
-        const currentUser = yield usersModel_1.default.findById(decoded._id).select("+lastLogin");
+        const currentUser = yield usersModel_1.default.findById(decoded._id);
         if (!currentUser) {
             return next(AppError_1.default.unauthorized("The user belonging to this token no longer exists."));
         }

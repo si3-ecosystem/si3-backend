@@ -113,7 +113,7 @@ export const mainMiddleware = (app: Application): void => {
   // Rate limiting
   const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // 100 requests per window
+    max: process.env.NODE_ENV === "development" ? 1000 : 100, // More permissive in development
     message: {
       status: "error",
       error: {
@@ -124,12 +124,12 @@ export const mainMiddleware = (app: Application): void => {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => process.env.NODE_ENV === "development",
+    skip: () => false, // Always apply rate limiting, but with higher limits in development
   });
 
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 requests per window
+    max: process.env.NODE_ENV === "development" ? 100 : 5, // More permissive in development
     message: {
       status: "error",
       error: {
@@ -140,7 +140,7 @@ export const mainMiddleware = (app: Application): void => {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => process.env.NODE_ENV === "development",
+    skip: () => false, // Always apply rate limiting, but with higher limits in development
   });
 
   const uploadLimiter = rateLimit({

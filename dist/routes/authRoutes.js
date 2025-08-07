@@ -7,6 +7,7 @@ const express_1 = require("express");
 const authController_1 = require("../controllers/authController");
 const authValidation_1 = require("../validators/authValidation");
 const protectMiddleware_1 = require("../middleware/protectMiddleware");
+const protectUnverifiedMiddleware_1 = require("../middleware/protectUnverifiedMiddleware");
 const validationMiddleware_1 = __importDefault(require("../middleware/validationMiddleware"));
 const router = (0, express_1.Router)();
 /**
@@ -63,4 +64,28 @@ router.get("/check", authController_1.checkAuth);
  * @access  Private
  */
 router.post("/refresh", protectMiddleware_1.protect, authController_1.refreshToken);
+/**
+ * @route   GET /api/auth/me
+ * @desc    Get current user profile
+ * @access  Private
+ */
+router.get("/me", protectMiddleware_1.protect, authController_1.getMe);
+/**
+ * @route   PATCH /api/auth/profile
+ * @desc    Update user profile (partial update)
+ * @access  Private
+ */
+router.patch("/profile", protectMiddleware_1.protect, authValidation_1.validateProfileUpdate, validationMiddleware_1.default, authController_1.updateProfile);
+/**
+ * @route   POST /api/auth/send-verification
+ * @desc    Send email verification OTP to current user
+ * @access  Private (allows unverified users)
+ */
+router.post("/send-verification", protectUnverifiedMiddleware_1.protectUnverified, authController_1.sendEmailVerification);
+/**
+ * @route   POST /api/auth/verify-email
+ * @desc    Verify email with OTP for current user
+ * @access  Private (allows unverified users)
+ */
+router.post("/verify-email", protectUnverifiedMiddleware_1.protectUnverified, authValidation_1.validateEmailVerification, validationMiddleware_1.default, authController_1.verifyEmailVerification);
 exports.default = router;
