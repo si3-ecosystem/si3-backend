@@ -92,8 +92,8 @@ class EmailService {
       },
 
       events: {
-        username: process.env.SMTP_USERNAME_EVENTS || "",
-        token: process.env.SMTP_TOKEN_EVENTS || "",
+        username: process.env.SMTP_USERNAME_MEMBERS || "",
+        token: process.env.SMTP_TOKEN_MEMBERS || "",
       },
     };
   }

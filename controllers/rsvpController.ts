@@ -610,8 +610,8 @@ export const debugRSVPEmail = catchAsync(async (req: AuthenticatedRequest, res: 
 
     // Check environment variables
     const envCheck = {
-      SMTP_USERNAME_EVENTS: !!process.env.SMTP_USERNAME_EVENTS,
-      SMTP_TOKEN_EVENTS: !!process.env.SMTP_TOKEN_EVENTS,
+      SMTP_USERNAME_MEMBERS: !!process.env.SMTP_USERNAME_MEMBERS,
+      SMTP_TOKEN_MEMBERS: !!process.env.SMTP_TOKEN_MEMBERS,
       SMTP_SERVER: process.env.SMTP_SERVER,
       SMTP_PORT: process.env.SMTP_PORT,
       API_BASE_URL: process.env.API_BASE_URL,
@@ -853,7 +853,7 @@ function generateEmailDebugRecommendations(debugInfo: any): string[] {
   }
 
   if (!debugInfo.emailConfig.smtpStatus.isConfigured) {
-    recommendations.push("SMTP configuration is incomplete. Check SMTP_USERNAME_EVENTS and SMTP_TOKEN_EVENTS environment variables.");
+    recommendations.push("SMTP configuration is incomplete. Check SMTP_USERNAME_MEMBERS and SMTP_TOKEN_MEMBERS environment variables.");
   }
 
   if (!debugInfo.emailConfig.smtpConnectionTest) {
@@ -868,7 +868,7 @@ function generateEmailDebugRecommendations(debugInfo: any): string[] {
     recommendations.push("Event data could not be retrieved from Sanity. Check event ID and Sanity connection.");
   }
 
-  if (!debugInfo.environment.SMTP_USERNAME_EVENTS || !debugInfo.environment.SMTP_TOKEN_EVENTS) {
+  if (!debugInfo.environment.SMTP_USERNAME_MEMBERS || !debugInfo.environment.SMTP_TOKEN_MEMBERS) {
     recommendations.push("Missing required environment variables for events SMTP configuration.");
   }
 
