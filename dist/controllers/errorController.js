@@ -86,8 +86,8 @@ const globalErrorHandler = (err, req, res, next) => {
     else if (!(err instanceof AppError_1.default)) {
         // Convert unknown errors to AppError
         error = new AppError_1.default(process.env.NODE_ENV === "development"
-            ? err.message
-            : "Something went wrong!", err.statusCode || 500, "INTERNAL_SERVER_ERROR");
+            ? ((err === null || err === void 0 ? void 0 : err.message) || "Unknown error")
+            : "Something went wrong!", (err === null || err === void 0 ? void 0 : err.statusCode) || 500, "INTERNAL_SERVER_ERROR");
     }
     // Send appropriate response
     if (process.env.NODE_ENV === "development") {

@@ -45,7 +45,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkAuth = exports.refreshToken = exports.updateProfile = exports.getMe = exports.logout = exports.disconnectWallet = exports.connectWallet = exports.verifyWalletSignature = exports.requestWalletSignature = exports.verifyEmailOTP = exports.sendEmailOTP = void 0;
+exports.checkAuth = exports.refreshToken = exports.updateProfile = exports.getMe = exports.verifyEmailVerification = exports.sendEmailVerification = exports.logout = exports.disconnectWallet = exports.connectWallet = exports.verifyWalletSignature = exports.requestWalletSignature = exports.verifyEmailOTP = exports.sendEmailOTP = void 0;
 const ethers_1 = require("ethers");
 const usersModel_1 = __importStar(require("../models/usersModel"));
 const protonMail_1 = __importDefault(require("../config/protonMail"));
@@ -60,7 +60,8 @@ const NONCE_KEY_PREFIX = "auth:nonce:";
 const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "60", 10); // 1 minute
+const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS ||
+    (process.env.NODE_ENV === "development" ? "10" : "60"), 10); // 10 seconds in development, 1 minute in production
 /**
  * Send OTP to email for passwordless login
  */
@@ -310,13 +311,97 @@ exports.logout = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0,
     });
 }));
 /**
+ * Send email verification OTP to current user
+ */
+exports.sendEmailVerification = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = req.user;
+    const email = user.email;
+    // Check if user already verified
+    if (user.isVerified) {
+        return next(new AppError_1.default("Email is already verified", 400));
+    }
+    // Check rate limit
+    const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${email}`;
+    const rateLimitCheck = yield redisHelper_1.default.cacheGet(rateLimitKey);
+    if (rateLimitCheck) {
+        return next(new AppError_1.default(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`, 429));
+    }
+    // Generate OTP
+    const otp = authUtils_1.default.generateOTP(6);
+    // Store OTP in Redis with verification prefix
+    const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
+    yield redisHelper_1.default.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
+    // Set rate limit
+    yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    // Create verification email template
+    const verificationHtml = (0, emailTemplates_1.otpEmailTemplate)(otp, email, "Email Verification");
+    // Send verification email
+    yield protonMail_1.default.sendEmail({
+        senderName: "SI U Verification",
+        senderEmail: "guides@si3.space",
+        toName: email,
+        toEmail: email,
+        subject: `${otp}: Verify Your Email Address`,
+        htmlContent: verificationHtml,
+        emailType: "rsvp",
+    });
+    res.status(200).json({
+        status: "success",
+        message: "Verification code sent to your email address",
+        data: {
+            email,
+            expiresIn: OTP_TTL_SECONDS,
+        },
+    });
+}));
+/**
+ * Verify email with OTP for current user
+ */
+exports.verifyEmailVerification = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { otp } = req.body;
+    const user = req.user;
+    const email = user.email;
+    // Check if user already verified
+    if (user.isVerified) {
+        return next(new AppError_1.default("Email is already verified", 400));
+    }
+    // Get OTP from Redis with verification prefix
+    const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
+    const storedOTP = yield redisHelper_1.default.cacheGet(otpKey);
+    if (!storedOTP) {
+        return next(new AppError_1.default("Verification code has expired or is invalid", 400));
+    }
+    if (Number(storedOTP) !== Number(otp)) {
+        return next(new AppError_1.default("Invalid verification code", 400));
+    }
+    // Clear OTP from Redis
+    yield redisHelper_1.default.cacheDelete(otpKey);
+    // Update user verification status
+    user.isVerified = true;
+    yield user.save({ validateBeforeSave: false });
+    // Generate new token with updated verification status
+    authUtils_1.default.createSendToken(user, 200, res, "Email verified successfully");
+}));
+/**
  * Get current user profile
  */
 exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const user = req.user;
+    // Ensure default notification settings exist
+    if (!user.notificationSettings) {
+        user.notificationSettings = {
+            emailUpdates: true,
+            sessionReminder: true,
+            marketingEmails: false,
+            weeklyDigest: true,
+            eventAnnouncements: true,
+        };
+        yield user.save({ validateBeforeSave: false });
+    }
     const userResponse = {
         id: user._id,
         email: user.email,
+        username: user.username,
         roles: user.roles,
         isVerified: user.isVerified,
         companyName: user.companyName,
@@ -330,6 +415,10 @@ exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, 
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        // New fields for settings page
+        notificationSettings: user.notificationSettings,
+        walletInfo: user.walletInfo,
+        settingsUpdatedAt: user.settingsUpdatedAt,
     };
     res.status(200).json({
         status: "success",
@@ -344,6 +433,8 @@ exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, 
 exports.updateProfile = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const user = req.user;
     const allowedFields = [
+        "email",
+        "username",
         "companyName",
         "companyAffiliation",
         "interests",
@@ -360,6 +451,57 @@ exports.updateProfile = (0, catchAsync_1.default)((req, res, next) => __awaiter(
             updateData[field] = req.body[field];
         }
     });
+    // Special validation for email updates
+    if (updateData.email) {
+        const newEmail = updateData.email.toLowerCase().trim();
+        // Validate email format
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+            return next(new AppError_1.default("Please provide a valid email address", 400));
+        }
+        // Prevent wallet temp emails
+        if (newEmail.includes('@wallet.temp')) {
+            return next(new AppError_1.default("Wallet temporary emails are not allowed. Please use a real email address.", 400));
+        }
+        // Check if email is already taken by another user
+        const existingUser = yield usersModel_1.default.findOne({
+            email: newEmail,
+            _id: { $ne: user._id }
+        });
+        if (existingUser) {
+            return next(new AppError_1.default("This email address is already in use by another account", 400));
+        }
+        // Only reset verification status if email actually changed
+        if (newEmail !== user.email) {
+            updateData.isVerified = false;
+            console.log(`[PROFILE UPDATE] Email changed from ${user.email} to ${newEmail}, resetting verification status`);
+        }
+        else {
+            console.log(`[PROFILE UPDATE] Email unchanged (${newEmail}), preserving verification status`);
+        }
+        updateData.email = newEmail;
+    }
+    // Special validation for username updates
+    if (updateData.username) {
+        const newUsername = updateData.username.trim();
+        // Validate username format
+        if (!/^[a-zA-Z0-9_-]+$/.test(newUsername)) {
+            return next(new AppError_1.default("Username can only contain letters, numbers, underscores, and hyphens", 400));
+        }
+        // Validate username length
+        if (newUsername.length < 3 || newUsername.length > 30) {
+            return next(new AppError_1.default("Username must be between 3 and 30 characters long", 400));
+        }
+        // Check if username is already taken by another user (case-insensitive check)
+        const existingUser = yield usersModel_1.default.findOne({
+            username: { $regex: new RegExp(`^${newUsername}$`, 'i') },
+            _id: { $ne: user._id }
+        });
+        if (existingUser) {
+            return next(new AppError_1.default("This username is already taken", 400));
+        }
+        updateData.username = newUsername; // Preserve original case
+        console.log(`[PROFILE UPDATE] Username updated to: ${newUsername} (preserving case)`);
+    }
     // Only allow admins to update roles
     if (updateData.roles && !user.roles.includes(usersModel_1.UserRole.ADMIN)) {
         delete updateData.roles;

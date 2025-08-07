@@ -1,13 +1,17 @@
 import { Router } from "express";
 
 import {
+  getMe,
   logout,
   checkAuth,
   refreshToken,
   sendEmailOTP,
   connectWallet,
   verifyEmailOTP,
+  updateProfile,
   disconnectWallet,
+  sendEmailVerification,
+  verifyEmailVerification,
   verifyWalletSignature,
   requestWalletSignature,
 } from "../controllers/authController";
@@ -16,11 +20,14 @@ import {
   validateEmailOTP,
   validateConnectWallet,
   validateOTPVerification,
+  validateProfileUpdate,
+  validateEmailVerification,
   validateWalletSignatureRequest,
   validateWalletSignatureVerification,
 } from "../validators/authValidation";
 
 import { protect } from "../middleware/protectMiddleware";
+import { protectUnverified } from "../middleware/protectUnverifiedMiddleware";
 import validationMiddleware from "../middleware/validationMiddleware";
 
 const router = Router();
@@ -122,5 +129,37 @@ router.get("/check", checkAuth);
  */
 
 router.post("/refresh", protect, refreshToken);
+
+/**
+ * @route   GET /api/auth/me
+ * @desc    Get current user profile
+ * @access  Private
+ */
+
+router.get("/me", protect, getMe);
+
+/**
+ * @route   PATCH /api/auth/profile
+ * @desc    Update user profile (partial update)
+ * @access  Private
+ */
+
+router.patch("/profile", protect, validateProfileUpdate, validationMiddleware, updateProfile);
+
+/**
+ * @route   POST /api/auth/send-verification
+ * @desc    Send email verification OTP to current user
+ * @access  Private (allows unverified users)
+ */
+
+router.post("/send-verification", protectUnverified, sendEmailVerification);
+
+/**
+ * @route   POST /api/auth/verify-email
+ * @desc    Verify email with OTP for current user
+ * @access  Private (allows unverified users)
+ */
+
+router.post("/verify-email", protectUnverified, validateEmailVerification, validationMiddleware, verifyEmailVerification);
 
 export default router;

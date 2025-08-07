@@ -25,10 +25,29 @@ export interface IDigitalLink {
   url: string;
 }
 
+// Interface for notification settings
+export interface INotificationSettings {
+  emailUpdates: boolean;
+  sessionReminder: boolean;
+  marketingEmails: boolean;
+  weeklyDigest: boolean;
+  eventAnnouncements: boolean;
+}
+
+// Interface for wallet information
+export interface IWalletInfo {
+  address?: string;
+  connectedWallet?: string;
+  network?: string;
+  connectedAt?: Date;
+  lastUsed?: Date;
+}
+
 // Interface for the user document
 export interface IUser extends Document {
   _id: Types.ObjectId;
   email: string;
+  username?: string;
   lastLogin?: Date;
   details?: string;
   roles: UserRole[];
@@ -40,6 +59,11 @@ export interface IUser extends Document {
   personalValues: string[];
   companyAffiliation?: string;
   digitalLinks: IDigitalLink[];
+
+  // New fields for settings page
+  notificationSettings: INotificationSettings;
+  walletInfo?: IWalletInfo;
+  settingsUpdatedAt: Date;
 
   // Metadata
   createdAt: Date;
@@ -92,6 +116,24 @@ const userSchema = new Schema<IUser>(
         },
         message: "Please provide a valid email address",
       },
+    },
+
+    username: {
+      type: String,
+      trim: true,
+      // Removed lowercase: true to preserve original case
+      minlength: [3, "Username must be at least 3 characters long"],
+      maxlength: [30, "Username cannot exceed 30 characters"],
+      validate: {
+        validator: function (username: string) {
+          if (!username) return true; // Optional field
+          // Username can contain letters, numbers, underscores, and hyphens
+          return /^[a-zA-Z0-9_-]+$/.test(username);
+        },
+        message: "Username can only contain letters, numbers, underscores, and hyphens",
+      },
+      sparse: true, // Allow multiple null values but enforce uniqueness for non-null values
+      unique: true,
     },
 
     isVerified: {
@@ -192,6 +234,64 @@ const userSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+
+    // New fields for settings page
+    notificationSettings: {
+      emailUpdates: {
+        type: Boolean,
+        default: true,
+      },
+      sessionReminder: {
+        type: Boolean,
+        default: true,
+      },
+      marketingEmails: {
+        type: Boolean,
+        default: false,
+      },
+      weeklyDigest: {
+        type: Boolean,
+        default: true,
+      },
+      eventAnnouncements: {
+        type: Boolean,
+        default: true,
+      },
+    },
+
+    walletInfo: {
+      address: {
+        type: String,
+        sparse: true,
+        validate: {
+          validator: function (address: string) {
+            if (!address) return true; // Optional field
+            return /^0x[a-fA-F0-9]{40}$/.test(address);
+          },
+          message: "Please provide a valid Ethereum address",
+        },
+      },
+      connectedWallet: {
+        type: String,
+        enum: ["Zerion", "MetaMask", "WalletConnect", "Other"],
+      },
+      network: {
+        type: String,
+        enum: ["Mainnet", "Polygon", "Arbitrum", "Base", "Optimism"],
+        default: "Mainnet",
+      },
+      connectedAt: {
+        type: Date,
+      },
+      lastUsed: {
+        type: Date,
+      },
+    },
+
+    settingsUpdatedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,
@@ -205,6 +305,8 @@ userSchema.index({ roles: 1 });
 userSchema.index({ wallet_address: 1 }, { sparse: true });
 userSchema.index({ isVerified: 1, createdAt: -1 });
 userSchema.index({ lastLogin: -1 });
+userSchema.index({ "walletInfo.address": 1 }, { sparse: true });
+userSchema.index({ settingsUpdatedAt: -1 });
 
 // Essential pre-save middleware
 userSchema.pre("save", function (next) {

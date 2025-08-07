@@ -96,6 +96,7 @@ class AuthUtils {
     const userResponse = {
       id: user._id,
       email: user.email,
+      username: user.username,
       roles: user.roles,
       interests: user.interests,
       lastLogin: user.lastLogin,
@@ -107,6 +108,10 @@ class AuthUtils {
       wallet_address: user.wallet_address,
       personalValues: user.personalValues,
       companyAffiliation: user.companyAffiliation,
+      // New fields for settings page
+      notificationSettings: user.notificationSettings,
+      walletInfo: user.walletInfo,
+      settingsUpdatedAt: user.settingsUpdatedAt,
     };
 
     res.status(statusCode).json({
