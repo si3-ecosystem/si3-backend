@@ -11,6 +11,8 @@ import {
   updateProfile,
   disconnectWallet,
   sendEmailVerification,
+  sendEmailVerificationToNewEmail,
+  debugEmailRequest,
   verifyEmailVerification,
   verifyWalletSignature,
   requestWalletSignature,
@@ -22,6 +24,7 @@ import {
   validateOTPVerification,
   validateProfileUpdate,
   validateEmailVerification,
+  validateNewEmailVerification,
   validateWalletSignatureRequest,
   validateWalletSignatureVerification,
 } from "../validators/authValidation";
@@ -153,6 +156,22 @@ router.patch("/profile", protect, validateProfileUpdate, validationMiddleware, u
  */
 
 router.post("/send-verification", protectUnverified, sendEmailVerification);
+
+/**
+ * @route   POST /api/auth/send-verification-new-email
+ * @desc    Send email verification to a new email address for email update
+ * @access  Private (allows unverified users)
+ */
+
+router.post("/send-verification-new-email", protectUnverified, sendEmailVerificationToNewEmail);
+
+/**
+ * @route   POST /api/auth/debug-email
+ * @desc    Debug endpoint to test request parsing
+ * @access  Private
+ */
+
+router.post("/debug-email", protectUnverified, debugEmailRequest);
 
 /**
  * @route   POST /api/auth/verify-email

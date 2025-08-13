@@ -45,7 +45,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkAuth = exports.refreshToken = exports.updateProfile = exports.getMe = exports.verifyEmailVerification = exports.sendEmailVerification = exports.logout = exports.disconnectWallet = exports.connectWallet = exports.verifyWalletSignature = exports.requestWalletSignature = exports.verifyEmailOTP = exports.sendEmailOTP = void 0;
+exports.checkAuth = exports.refreshToken = exports.updateProfile = exports.getMe = exports.verifyEmailVerification = exports.debugEmailRequest = exports.sendEmailVerificationToNewEmail = exports.sendEmailVerification = exports.logout = exports.disconnectWallet = exports.connectWallet = exports.verifyWalletSignature = exports.requestWalletSignature = exports.verifyEmailOTP = exports.sendEmailOTP = void 0;
 const ethers_1 = require("ethers");
 const usersModel_1 = __importStar(require("../models/usersModel"));
 const protonMail_1 = __importDefault(require("../config/protonMail"));
@@ -60,36 +60,39 @@ const NONCE_KEY_PREFIX = "auth:nonce:";
 const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS ||
-    (process.env.NODE_ENV === "development" ? "10" : "60"), 10); // 10 seconds in development, 1 minute in production
+const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "600", 10); // 1 minute
 /**
  * Send OTP to email for passwordless login
  */
 exports.sendEmailOTP = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { email } = req.body;
-    // Rate limiting
+    // Rate limiting (disabled for development)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}email:${email}`;
-    const isLimited = yield redisHelper_1.default.cacheGet(rateLimitKey);
-    if (isLimited) {
-        return next(AppError_1.default.tooManyRequests("Please wait before requesting another OTP"));
+    if (process.env.NODE_ENV === "production") {
+        const isLimited = yield redisHelper_1.default.cacheGet(rateLimitKey);
+        if (isLimited) {
+            return next(AppError_1.default.tooManyRequests("Please wait before requesting another OTP"));
+        }
     }
     // Generate OTP
     const otp = authUtils_1.default.generateOTP(6);
     // Store OTP in Redis
     const otpKey = `${OTP_KEY_PREFIX}${email}`;
     yield redisHelper_1.default.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
-    // Set rate limit
-    yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    // Set rate limit (only in production)
+    if (process.env.NODE_ENV === "production") {
+        yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    }
     const applicantConfirmationHtml = (0, emailTemplates_1.otpEmailTemplate)(otp, email);
     // In production, integrate with your email service:
     yield protonMail_1.default.sendEmail({
-        senderName: "SI U Members",
-        senderEmail: protonMail_1.default.getSenderEmail("basic"),
+        senderName: "SI U Login",
+        senderEmail: "guides@si3.space",
         toName: email,
         toEmail: email,
         subject: `${otp}: Your SI U Login Code`,
         htmlContent: applicantConfirmationHtml,
-        emailType: "basic",
+        emailType: "rsvp",
     });
     res.status(200).json({
         status: "success",
@@ -116,66 +119,50 @@ exports.verifyEmailOTP = (0, catchAsync_1.default)((req, res, next) => __awaiter
     }
     // Clear OTP from Redis
     yield redisHelper_1.default.cacheDelete(otpKey);
-    // Find or create user
-    let user = yield usersModel_1.default.findOne({ email });
-    let isNewUser = false;
+    // Find existing user (don't create new ones via OTP login)
+    const user = yield usersModel_1.default.findOne({ email });
+    if (!user) {
+        // For OTP login, we should only allow existing users
+        // New users should register through proper registration flow
+        return next(AppError_1.default.badRequest("No account found with this email address. Please register first or use the correct email."));
+    }
+    // Update existing user
+    user.isVerified = true;
+    user.lastLogin = new Date();
+    yield user.save({ validateBeforeSave: false });
+    // Send login alert
     const loginTime = new Date().toISOString();
     const ip = req.headers["x-forwarded-for"] || "Unknown";
-    if (!user) {
-        user = new usersModel_1.default({
-            email,
-            isVerified: true,
-            lastLogin: new Date(),
-            roles: [usersModel_1.UserRole.SCHOLAR],
-        });
-        yield user.save();
-        isNewUser = true;
-        // Send welcome email
-        const welcomeHtml = (0, emailTemplates_1.welcomeEmailTemplate)();
-        yield protonMail_1.default.sendEmail({
-            senderName: "SI U Team",
-            senderEmail: protonMail_1.default.getSenderEmail("basic"),
-            toName: email,
-            toEmail: email,
-            subject: "Welcome to SI U",
-            htmlContent: welcomeHtml,
-            emailType: "basic",
-        });
-    }
-    else {
-        user.isVerified = true;
-        user.lastLogin = new Date();
-        yield user.save({ validateBeforeSave: false });
-        // Send login alert
-        const loginHtml = (0, emailTemplates_1.loginAlertEmailTemplate)({
-            email,
-            time: loginTime,
-            location: "Unknown",
-            ipAddress: Array.isArray(ip) ? ip[0] : ip,
-        });
-        yield protonMail_1.default.sendEmail({
-            senderName: "SI U Security",
-            senderEmail: protonMail_1.default.getSenderEmail("basic"),
-            toName: email,
-            toEmail: email,
-            subject: "New Login Detected",
-            htmlContent: loginHtml,
-            emailType: "basic",
-        });
-    }
+    const loginHtml = (0, emailTemplates_1.loginAlertEmailTemplate)({
+        email,
+        time: loginTime,
+        location: "Unknown",
+        ipAddress: Array.isArray(ip) ? ip[0] : ip,
+    });
+    yield protonMail_1.default.sendEmail({
+        senderName: "SI U Security",
+        senderEmail: "guides@si3.space",
+        toName: email,
+        toEmail: email,
+        subject: "New Login Detected",
+        htmlContent: loginHtml,
+        emailType: "rsvp",
+    });
     // Finally generate and send token
-    authUtils_1.default.createSendToken(user, 200, res, isNewUser ? "Account created successfully" : "Login successful");
+    authUtils_1.default.createSendToken(user, 200, res, "Login successful");
 }));
 /**
  * Request wallet signature message
  */
 exports.requestWalletSignature = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { wallet_address } = req.body;
-    // Rate limiting
+    // Rate limiting (disabled for development)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}wallet:${wallet_address}`;
-    const isLimited = yield redisHelper_1.default.cacheGet(rateLimitKey);
-    if (isLimited) {
-        return next(AppError_1.default.tooManyRequests("Please wait before requesting another signature"));
+    if (process.env.NODE_ENV === "production") {
+        const isLimited = yield redisHelper_1.default.cacheGet(rateLimitKey);
+        if (isLimited) {
+            return next(AppError_1.default.tooManyRequests("Please wait before requesting another signature"));
+        }
     }
     // Generate nonce
     const nonce = authUtils_1.default.generateNonce();
@@ -183,8 +170,10 @@ exports.requestWalletSignature = (0, catchAsync_1.default)((req, res, next) => _
     // Store nonce in Redis
     const nonceKey = `${NONCE_KEY_PREFIX}${wallet_address}`;
     yield redisHelper_1.default.cacheSet(nonceKey, nonce, NONCE_TTL_SECONDS);
-    // Set rate limit
-    yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    // Set rate limit (only in production)
+    if (process.env.NODE_ENV === "production") {
+        yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    }
     res.status(200).json({
         status: "success",
         data: {
@@ -314,25 +303,39 @@ exports.logout = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0,
  * Send email verification OTP to current user
  */
 exports.sendEmailVerification = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     const user = req.user;
     const email = user.email;
-    // Check if user already verified
-    if (user.isVerified) {
+    console.log(`[EMAIL VERIFICATION DEBUG] User attempting to send verification:`, {
+        userId: user._id,
+        email: user.email,
+        isVerified: user.isVerified,
+        hasWallet: !!user.wallet_address,
+        isTempEmail: (_a = user.email) === null || _a === void 0 ? void 0 : _a.includes('@wallet.temp')
+    });
+    // Allow wallet users with temp emails to send verification even if "verified"
+    const isWalletUserWithTempEmail = user.wallet_address && ((_b = user.email) === null || _b === void 0 ? void 0 : _b.includes('@wallet.temp'));
+    if (user.isVerified && !isWalletUserWithTempEmail) {
+        console.log(`[EMAIL VERIFICATION DEBUG] Blocking verified user without temp email`);
         return next(new AppError_1.default("Email is already verified", 400));
     }
-    // Check rate limit
+    // Check rate limit (disabled for development)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${email}`;
-    const rateLimitCheck = yield redisHelper_1.default.cacheGet(rateLimitKey);
-    if (rateLimitCheck) {
-        return next(new AppError_1.default(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`, 429));
+    if (process.env.NODE_ENV === "production") {
+        const rateLimitCheck = yield redisHelper_1.default.cacheGet(rateLimitKey);
+        if (rateLimitCheck) {
+            return next(new AppError_1.default(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`, 429));
+        }
     }
     // Generate OTP
     const otp = authUtils_1.default.generateOTP(6);
     // Store OTP in Redis with verification prefix
     const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
     yield redisHelper_1.default.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
-    // Set rate limit
-    yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    // Set rate limit (only in production)
+    if (process.env.NODE_ENV === "production") {
+        yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    }
     // Create verification email template
     const verificationHtml = (0, emailTemplates_1.otpEmailTemplate)(otp, email, "Email Verification");
     // Send verification email
@@ -355,18 +358,112 @@ exports.sendEmailVerification = (0, catchAsync_1.default)((req, res, next) => __
     });
 }));
 /**
+ * Send email verification to a new email address for email update
+ */
+exports.sendEmailVerificationToNewEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    console.log(`[NEW EMAIL DEBUG] Request body:`, req.body);
+    console.log(`[NEW EMAIL DEBUG] Request headers content-type:`, req.headers['content-type']);
+    const { email: newEmail } = req.body;
+    const user = req.user;
+    console.log(`[NEW EMAIL DEBUG] Extracted email:`, newEmail);
+    console.log(`[NEW EMAIL DEBUG] Email type:`, typeof newEmail);
+    // Simple validation
+    if (!newEmail) {
+        return next(new AppError_1.default("Email is required", 400));
+    }
+    if (typeof newEmail !== 'string' || !newEmail.includes('@')) {
+        return next(new AppError_1.default("Please provide a valid email address", 400));
+    }
+    if (newEmail.includes('@wallet.temp')) {
+        return next(new AppError_1.default("Wallet temporary emails are not allowed", 400));
+    }
+    console.log(`[NEW EMAIL VERIFICATION DEBUG] User attempting to verify new email:`, {
+        userId: user._id,
+        currentEmail: user.email,
+        newEmail: newEmail,
+        isVerified: user.isVerified,
+        hasWallet: !!user.wallet_address,
+        isTempEmail: (_a = user.email) === null || _a === void 0 ? void 0 : _a.includes('@wallet.temp')
+    });
+    // Check if the new email is already taken by another user
+    const existingUser = yield usersModel_1.default.findOne({
+        email: newEmail,
+        _id: { $ne: user._id }
+    });
+    if (existingUser) {
+        return next(new AppError_1.default("This email address is already in use by another account", 400));
+    }
+    // Check rate limit (disabled for development)
+    const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${newEmail}`;
+    if (process.env.NODE_ENV === "production") {
+        const rateLimitCheck = yield redisHelper_1.default.cacheGet(rateLimitKey);
+        if (rateLimitCheck) {
+            return next(new AppError_1.default(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`, 429));
+        }
+    }
+    // Generate OTP
+    const otp = authUtils_1.default.generateOTP(6);
+    // Store OTP in Redis with verification prefix for the NEW email
+    const otpKey = `verification:${OTP_KEY_PREFIX}${newEmail}`;
+    yield redisHelper_1.default.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
+    // Set rate limit (only in production)
+    if (process.env.NODE_ENV === "production") {
+        yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    }
+    // Create verification email template
+    const verificationHtml = (0, emailTemplates_1.otpEmailTemplate)(otp, newEmail, "Email Verification");
+    // Send verification email to the NEW email address
+    yield protonMail_1.default.sendEmail({
+        senderName: "SI U Verification",
+        senderEmail: "guides@si3.space",
+        toName: newEmail,
+        toEmail: newEmail,
+        subject: `${otp}: Verify Your New Email Address`,
+        htmlContent: verificationHtml,
+        emailType: "rsvp",
+    });
+    console.log(`[NEW EMAIL VERIFICATION DEBUG] Verification sent to new email: ${newEmail}`);
+    res.status(200).json({
+        status: "success",
+        message: `Verification code sent to ${newEmail}`,
+        data: {
+            email: newEmail,
+            expiresIn: OTP_TTL_SECONDS,
+        },
+    });
+}));
+/**
+ * Debug endpoint to test request parsing
+ */
+exports.debugEmailRequest = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log(`[DEBUG] Full request:`, {
+        body: req.body,
+        headers: req.headers,
+        method: req.method,
+        url: req.url,
+        contentType: req.headers['content-type']
+    });
+    res.status(200).json({
+        status: "success",
+        message: "Debug info logged",
+        data: {
+            body: req.body,
+            contentType: req.headers['content-type']
+        }
+    });
+}));
+/**
  * Verify email with OTP for current user
  */
 exports.verifyEmailVerification = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { otp } = req.body;
+    const { otp, email: newEmail } = req.body;
     const user = req.user;
-    const email = user.email;
-    // Check if user already verified
-    if (user.isVerified) {
-        return next(new AppError_1.default("Email is already verified", 400));
-    }
+    // If newEmail is provided, this is for updating to a new email
+    // If not provided, this is for verifying the current email
+    const emailToVerify = newEmail || user.email;
     // Get OTP from Redis with verification prefix
-    const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
+    const otpKey = `verification:${OTP_KEY_PREFIX}${emailToVerify}`;
     const storedOTP = yield redisHelper_1.default.cacheGet(otpKey);
     if (!storedOTP) {
         return next(new AppError_1.default("Verification code has expired or is invalid", 400));
@@ -376,17 +473,38 @@ exports.verifyEmailVerification = (0, catchAsync_1.default)((req, res, next) => 
     }
     // Clear OTP from Redis
     yield redisHelper_1.default.cacheDelete(otpKey);
-    // Update user verification status
-    user.isVerified = true;
-    yield user.save({ validateBeforeSave: false });
-    // Generate new token with updated verification status
+    // If this is for a new email, update the user's email
+    if (newEmail && newEmail !== user.email) {
+        // Check if the new email is already taken by another user
+        const existingUser = yield usersModel_1.default.findOne({
+            email: newEmail,
+            _id: { $ne: user._id }
+        });
+        if (existingUser) {
+            return next(new AppError_1.default("This email address is already in use by another account", 400));
+        }
+        // Update to the new verified email
+        user.email = newEmail;
+        user.isVerified = true;
+        user.settingsUpdatedAt = new Date();
+        yield user.save({ validateBeforeSave: false });
+        console.log(`[EMAIL UPDATE] User ${user._id} updated email to ${newEmail} via verification`);
+    }
+    else {
+        // Just verify the current email
+        user.isVerified = true;
+        yield user.save({ validateBeforeSave: false });
+    }
+    // Generate new token with updated user data
     authUtils_1.default.createSendToken(user, 200, res, "Email verified successfully");
 }));
 /**
  * Get current user profile
  */
 exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     const user = req.user;
+  
     // Ensure default notification settings exist
     if (!user.notificationSettings) {
         user.notificationSettings = {
@@ -462,13 +580,15 @@ exports.updateProfile = (0, catchAsync_1.default)((req, res, next) => __awaiter(
         if (newEmail.includes('@wallet.temp')) {
             return next(new AppError_1.default("Wallet temporary emails are not allowed. Please use a real email address.", 400));
         }
-        // Check if email is already taken by another user
-        const existingUser = yield usersModel_1.default.findOne({
-            email: newEmail,
-            _id: { $ne: user._id }
-        });
-        if (existingUser) {
-            return next(new AppError_1.default("This email address is already in use by another account", 400));
+        // Only check for email conflicts if the email is actually changing
+        if (newEmail !== user.email) {
+            const existingUser = yield usersModel_1.default.findOne({
+                email: newEmail,
+                _id: { $ne: user._id }
+            });
+            if (existingUser) {
+                return next(new AppError_1.default("This email address is already in use by another account", 400));
+            }
         }
         // Only reset verification status if email actually changed
         if (newEmail !== user.email) {
