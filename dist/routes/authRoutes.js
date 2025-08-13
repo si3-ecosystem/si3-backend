@@ -83,6 +83,18 @@ router.patch("/profile", protectMiddleware_1.protect, authValidation_1.validateP
  */
 router.post("/send-verification", protectUnverifiedMiddleware_1.protectUnverified, authController_1.sendEmailVerification);
 /**
+ * @route   POST /api/auth/send-verification-new-email
+ * @desc    Send email verification to a new email address for email update
+ * @access  Private (allows unverified users)
+ */
+router.post("/send-verification-new-email", protectUnverifiedMiddleware_1.protectUnverified, authController_1.sendEmailVerificationToNewEmail);
+/**
+ * @route   POST /api/auth/debug-email
+ * @desc    Debug endpoint to test request parsing
+ * @access  Private
+ */
+router.post("/debug-email", protectUnverifiedMiddleware_1.protectUnverified, authController_1.debugEmailRequest);
+/**
  * @route   POST /api/auth/verify-email
  * @desc    Verify email with OTP for current user
  * @access  Private (allows unverified users)
