@@ -504,17 +504,7 @@ exports.verifyEmailVerification = (0, catchAsync_1.default)((req, res, next) => 
 exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const user = req.user;
-    console.log(`[PROFILE DEBUG] User profile requested:`, {
-        userId: user._id,
-        email: user.email,
-        username: user.username,
-        isVerified: user.isVerified,
-        hasWallet: !!user.wallet_address,
-        walletAddress: user.wallet_address,
-        isTempEmail: (_a = user.email) === null || _a === void 0 ? void 0 : _a.includes('@wallet.temp'),
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin
-    });
+  
     // Ensure default notification settings exist
     if (!user.notificationSettings) {
         user.notificationSettings = {

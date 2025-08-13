@@ -632,17 +632,6 @@ export const getMe = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
 
-    console.log(`[PROFILE DEBUG] User profile requested:`, {
-      userId: user._id,
-      email: user.email,
-      username: user.username,
-      isVerified: user.isVerified,
-      hasWallet: !!user.wallet_address,
-      walletAddress: user.wallet_address,
-      isTempEmail: user.email?.includes('@wallet.temp'),
-      createdAt: user.createdAt,
-      lastLogin: user.lastLogin
-    });
 
     // Ensure default notification settings exist
     if (!user.notificationSettings) {
