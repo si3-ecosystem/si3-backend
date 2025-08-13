@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateEmailVerification = exports.validateProfileUpdate = exports.validateRateLimit = exports.validateUserProfile = exports.validateConnectWallet = exports.validateWalletSignatureVerification = exports.validateWalletSignatureRequest = exports.validateOTPVerification = exports.validateEmailOTP = void 0;
+exports.validateNewEmailVerification = exports.validateEmailVerification = exports.validateProfileUpdate = exports.validateRateLimit = exports.validateUserProfile = exports.validateConnectWallet = exports.validateWalletSignatureVerification = exports.validateWalletSignatureRequest = exports.validateOTPVerification = exports.validateEmailOTP = void 0;
 const ethers_1 = require("ethers");
 const express_validator_1 = require("express-validator");
 // Email validation for OTP request
@@ -70,6 +70,14 @@ exports.validateConnectWallet = [
         .withMessage("Invalid signature format")
         .matches(/^0x[a-fA-F0-9]+$/)
         .withMessage("Signature must be a valid hex string"),
+    (0, express_validator_1.body)("connectedWallet")
+        .optional()
+        .isIn(["Zerion", "MetaMask", "WalletConnect", "Other"])
+        .withMessage("Invalid wallet type. Must be one of: Zerion, MetaMask, WalletConnect, Other"),
+    (0, express_validator_1.body)("network")
+        .optional()
+        .isIn(["Mainnet", "Polygon", "Arbitrum", "Base", "Optimism"])
+        .withMessage("Invalid network. Must be one of: Mainnet, Polygon, Arbitrum, Base, Optimism"),
 ];
 // User profile update validation (optional fields for registration)
 exports.validateUserProfile = [
@@ -247,4 +255,31 @@ exports.validateEmailVerification = [
         .withMessage("Verification code must be numeric")
         .isLength({ min: 6, max: 6 })
         .withMessage("Verification code must be 6 digits"),
+    (0, express_validator_1.body)("email")
+        .optional()
+        .isEmail()
+        .normalizeEmail()
+        .withMessage("Please provide a valid email address")
+        .custom((value) => {
+        if (value && value.includes('@wallet.temp')) {
+            throw new Error("Wallet temporary emails are not allowed. Please use a real email address.");
+        }
+        return true;
+    }),
+];
+// New email verification validation
+exports.validateNewEmailVerification = [
+    (0, express_validator_1.body)("email")
+        .notEmpty()
+        .withMessage("Email is required")
+        .isEmail()
+        .withMessage("Please provide a valid email address")
+        .isLength({ max: 254 })
+        .withMessage("Email address is too long")
+        .custom((value) => {
+        if (value && value.includes('@wallet.temp')) {
+            throw new Error("Wallet temporary emails are not allowed. Please use a real email address.");
+        }
+        return true;
+    }),
 ];

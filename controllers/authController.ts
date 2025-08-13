@@ -23,11 +23,7 @@ const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(
-  process.env.RATE_LIMIT_SECONDS ||
-  (process.env.NODE_ENV === "development" ? "10" : "60"),
-  10
-); // 10 seconds in development, 1 minute in production
+const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "600", 10); // 1 minute
 
 /**
  * Send OTP to email for passwordless login
@@ -37,14 +33,17 @@ export const sendEmailOTP = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email } = req.body;
 
-    // Rate limiting
+    // Rate limiting (disabled for development)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}email:${email}`;
-    const isLimited = await redisHelper.cacheGet(rateLimitKey);
 
-    if (isLimited) {
-      return next(
-        AppError.tooManyRequests("Please wait before requesting another OTP")
-      );
+    if (process.env.NODE_ENV === "production") {
+      const isLimited = await redisHelper.cacheGet(rateLimitKey);
+
+      if (isLimited) {
+        return next(
+          AppError.tooManyRequests("Please wait before requesting another OTP")
+        );
+      }
     }
 
     // Generate OTP
@@ -54,20 +53,22 @@ export const sendEmailOTP = catchAsync(
     const otpKey = `${OTP_KEY_PREFIX}${email}`;
     await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
 
-    // Set rate limit
-    await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    // Set rate limit (only in production)
+    if (process.env.NODE_ENV === "production") {
+      await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    }
 
     const applicantConfirmationHtml = otpEmailTemplate(otp, email);
 
     // In production, integrate with your email service:
     await emailService.sendEmail({
-      senderName: "SI U Members",
-      senderEmail: emailService.getSenderEmail("basic"),
+      senderName: "SI U Login",
+      senderEmail: "guides@si3.space",
       toName: email,
       toEmail: email,
       subject: `${otp}: Your SI U Login Code`,
       htmlContent: applicantConfirmationHtml,
-      emailType: "basic",
+      emailType: "rsvp",
     });
 
     res.status(200).json({
@@ -104,66 +105,49 @@ export const verifyEmailOTP = catchAsync(
     // Clear OTP from Redis
     await redisHelper.cacheDelete(otpKey);
 
-    // Find or create user
-    let user = await UserModel.findOne({ email });
-    let isNewUser = false;
+    // Find existing user (don't create new ones via OTP login)
+    const user = await UserModel.findOne({ email });
 
+    if (!user) {
+      // For OTP login, we should only allow existing users
+      // New users should register through proper registration flow
+      return next(AppError.badRequest(
+        "No account found with this email address. Please register first or use the correct email."
+      ));
+    }
+
+    // Update existing user
+    user.isVerified = true;
+    user.lastLogin = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    // Send login alert
     const loginTime = new Date().toISOString();
     const ip = req.headers["x-forwarded-for"] || "Unknown";
 
-    if (!user) {
-      user = new UserModel({
-        email,
-        isVerified: true,
-        lastLogin: new Date(),
-        roles: [UserRole.SCHOLAR],
-      });
+    const loginHtml = loginAlertEmailTemplate({
+      email,
+      time: loginTime,
+      location: "Unknown",
+      ipAddress: Array.isArray(ip) ? ip[0] : ip,
+    });
 
-      await user.save();
-      isNewUser = true;
-
-      // Send welcome email
-      const welcomeHtml = welcomeEmailTemplate();
-
-      await emailService.sendEmail({
-        senderName: "SI U Team",
-        senderEmail: emailService.getSenderEmail("basic"),
-        toName: email,
-        toEmail: email,
-        subject: "Welcome to SI U",
-        htmlContent: welcomeHtml,
-        emailType: "basic",
-      });
-    } else {
-      user.isVerified = true;
-      user.lastLogin = new Date();
-      await user.save({ validateBeforeSave: false });
-
-      // Send login alert
-      const loginHtml = loginAlertEmailTemplate({
-        email,
-        time: loginTime,
-        location: "Unknown",
-        ipAddress: Array.isArray(ip) ? ip[0] : ip,
-      });
-
-      await emailService.sendEmail({
-        senderName: "SI U Security",
-        senderEmail: emailService.getSenderEmail("basic"),
-        toName: email,
-        toEmail: email,
-        subject: "New Login Detected",
-        htmlContent: loginHtml,
-        emailType: "basic",
-      });
-    }
+    await emailService.sendEmail({
+      senderName: "SI U Security",
+      senderEmail: "guides@si3.space",
+      toName: email,
+      toEmail: email,
+      subject: "New Login Detected",
+      htmlContent: loginHtml,
+      emailType: "rsvp",
+    });
 
     // Finally generate and send token
     authUtils.createSendToken(
       user,
       200,
       res,
-      isNewUser ? "Account created successfully" : "Login successful"
+      "Login successful"
     );
   }
 );
@@ -176,16 +160,19 @@ export const requestWalletSignature = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { wallet_address } = req.body;
 
-    // Rate limiting
+    // Rate limiting (disabled for development)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}wallet:${wallet_address}`;
-    const isLimited = await redisHelper.cacheGet(rateLimitKey);
 
-    if (isLimited) {
-      return next(
-        AppError.tooManyRequests(
-          "Please wait before requesting another signature"
-        )
-      );
+    if (process.env.NODE_ENV === "production") {
+      const isLimited = await redisHelper.cacheGet(rateLimitKey);
+
+      if (isLimited) {
+        return next(
+          AppError.tooManyRequests(
+            "Please wait before requesting another signature"
+          )
+        );
+      }
     }
 
     // Generate nonce
@@ -196,8 +183,10 @@ export const requestWalletSignature = catchAsync(
     const nonceKey = `${NONCE_KEY_PREFIX}${wallet_address}`;
     await redisHelper.cacheSet(nonceKey, nonce, NONCE_TTL_SECONDS);
 
-    // Set rate limit
-    await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    // Set rate limit (only in production)
+    if (process.env.NODE_ENV === "production") {
+      await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    }
 
     res.status(200).json({
       status: "success",
@@ -384,22 +373,36 @@ export const sendEmailVerification = catchAsync(
     const user = req.user as IUser;
     const email = user.email;
 
-    // Check if user already verified
-    if (user.isVerified) {
+    console.log(`[EMAIL VERIFICATION DEBUG] User attempting to send verification:`, {
+      userId: user._id,
+      email: user.email,
+      isVerified: user.isVerified,
+      hasWallet: !!user.wallet_address,
+      isTempEmail: user.email?.includes('@wallet.temp')
+    });
+
+    // Allow wallet users with temp emails to send verification even if "verified"
+    const isWalletUserWithTempEmail = user.wallet_address && user.email?.includes('@wallet.temp');
+
+    if (user.isVerified && !isWalletUserWithTempEmail) {
+      console.log(`[EMAIL VERIFICATION DEBUG] Blocking verified user without temp email`);
       return next(new AppError("Email is already verified", 400));
     }
 
-    // Check rate limit
+    // Check rate limit (disabled for development)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${email}`;
-    const rateLimitCheck = await redisHelper.cacheGet(rateLimitKey);
 
-    if (rateLimitCheck) {
-      return next(
-        new AppError(
-          `Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`,
-          429
-        )
-      );
+    if (process.env.NODE_ENV === "production") {
+      const rateLimitCheck = await redisHelper.cacheGet(rateLimitKey);
+
+      if (rateLimitCheck) {
+        return next(
+          new AppError(
+            `Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`,
+            429
+          )
+        );
+      }
     }
 
     // Generate OTP
@@ -409,8 +412,10 @@ export const sendEmailVerification = catchAsync(
     const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
     await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
 
-    // Set rate limit
-    await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    // Set rate limit (only in production)
+    if (process.env.NODE_ENV === "production") {
+      await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    }
 
     // Create verification email template
     const verificationHtml = otpEmailTemplate(otp, email, "Email Verification");
@@ -438,21 +443,144 @@ export const sendEmailVerification = catchAsync(
 );
 
 /**
+ * Send email verification to a new email address for email update
+ */
+export const sendEmailVerificationToNewEmail = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log(`[NEW EMAIL DEBUG] Request body:`, req.body);
+    console.log(`[NEW EMAIL DEBUG] Request headers content-type:`, req.headers['content-type']);
+
+    const { email: newEmail } = req.body;
+    const user = req.user as IUser;
+
+    console.log(`[NEW EMAIL DEBUG] Extracted email:`, newEmail);
+    console.log(`[NEW EMAIL DEBUG] Email type:`, typeof newEmail);
+
+    // Simple validation
+    if (!newEmail) {
+      return next(new AppError("Email is required", 400));
+    }
+
+    if (typeof newEmail !== 'string' || !newEmail.includes('@')) {
+      return next(new AppError("Please provide a valid email address", 400));
+    }
+
+    if (newEmail.includes('@wallet.temp')) {
+      return next(new AppError("Wallet temporary emails are not allowed", 400));
+    }
+
+    console.log(`[NEW EMAIL VERIFICATION DEBUG] User attempting to verify new email:`, {
+      userId: user._id,
+      currentEmail: user.email,
+      newEmail: newEmail,
+      isVerified: user.isVerified,
+      hasWallet: !!user.wallet_address,
+      isTempEmail: user.email?.includes('@wallet.temp')
+    });
+
+    // Check if the new email is already taken by another user
+    const existingUser = await UserModel.findOne({
+      email: newEmail,
+      _id: { $ne: user._id }
+    });
+
+    if (existingUser) {
+      return next(new AppError("This email address is already in use by another account", 400));
+    }
+
+    // Check rate limit (disabled for development)
+    const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${newEmail}`;
+
+    if (process.env.NODE_ENV === "production") {
+      const rateLimitCheck = await redisHelper.cacheGet(rateLimitKey);
+
+      if (rateLimitCheck) {
+        return next(
+          new AppError(
+            `Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`,
+            429
+          )
+        );
+      }
+    }
+
+    // Generate OTP
+    const otp = authUtils.generateOTP(6);
+
+    // Store OTP in Redis with verification prefix for the NEW email
+    const otpKey = `verification:${OTP_KEY_PREFIX}${newEmail}`;
+    await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
+
+    // Set rate limit (only in production)
+    if (process.env.NODE_ENV === "production") {
+      await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
+    }
+
+    // Create verification email template
+    const verificationHtml = otpEmailTemplate(otp, newEmail, "Email Verification");
+
+    // Send verification email to the NEW email address
+    await emailService.sendEmail({
+      senderName: "SI U Verification",
+      senderEmail: "guides@si3.space",
+      toName: newEmail,
+      toEmail: newEmail,
+      subject: `${otp}: Verify Your New Email Address`,
+      htmlContent: verificationHtml,
+      emailType: "rsvp",
+    });
+
+    console.log(`[NEW EMAIL VERIFICATION DEBUG] Verification sent to new email: ${newEmail}`);
+
+    res.status(200).json({
+      status: "success",
+      message: `Verification code sent to ${newEmail}`,
+      data: {
+        email: newEmail,
+        expiresIn: OTP_TTL_SECONDS,
+      },
+    });
+  }
+);
+
+/**
+ * Debug endpoint to test request parsing
+ */
+export const debugEmailRequest = catchAsync(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log(`[DEBUG] Full request:`, {
+      body: req.body,
+      headers: req.headers,
+      method: req.method,
+      url: req.url,
+      contentType: req.headers['content-type']
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Debug info logged",
+      data: {
+        body: req.body,
+        contentType: req.headers['content-type']
+      }
+    });
+  }
+);
+
+/**
  * Verify email with OTP for current user
  */
 export const verifyEmailVerification = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { otp } = req.body;
+    const { otp, email: newEmail } = req.body;
     const user = req.user as IUser;
-    const email = user.email;
 
-    // Check if user already verified
-    if (user.isVerified) {
-      return next(new AppError("Email is already verified", 400));
-    }
+    // If newEmail is provided, this is for updating to a new email
+    // If not provided, this is for verifying the current email
+    const emailToVerify = newEmail || user.email;
 
     // Get OTP from Redis with verification prefix
-    const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
+    const otpKey = `verification:${OTP_KEY_PREFIX}${emailToVerify}`;
     const storedOTP = await redisHelper.cacheGet(otpKey);
 
     if (!storedOTP) {
@@ -466,11 +594,32 @@ export const verifyEmailVerification = catchAsync(
     // Clear OTP from Redis
     await redisHelper.cacheDelete(otpKey);
 
-    // Update user verification status
-    user.isVerified = true;
-    await user.save({ validateBeforeSave: false });
+    // If this is for a new email, update the user's email
+    if (newEmail && newEmail !== user.email) {
+      // Check if the new email is already taken by another user
+      const existingUser = await UserModel.findOne({
+        email: newEmail,
+        _id: { $ne: user._id }
+      });
 
-    // Generate new token with updated verification status
+      if (existingUser) {
+        return next(new AppError("This email address is already in use by another account", 400));
+      }
+
+      // Update to the new verified email
+      user.email = newEmail;
+      user.isVerified = true;
+      user.settingsUpdatedAt = new Date();
+      await user.save({ validateBeforeSave: false });
+
+      console.log(`[EMAIL UPDATE] User ${user._id} updated email to ${newEmail} via verification`);
+    } else {
+      // Just verify the current email
+      user.isVerified = true;
+      await user.save({ validateBeforeSave: false });
+    }
+
+    // Generate new token with updated user data
     authUtils.createSendToken(user, 200, res, "Email verified successfully");
   }
 );
@@ -482,6 +631,7 @@ export const verifyEmailVerification = catchAsync(
 export const getMe = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user as IUser;
+
 
     // Ensure default notification settings exist
     if (!user.notificationSettings) {
@@ -569,14 +719,16 @@ export const updateProfile = catchAsync(
         return next(new AppError("Wallet temporary emails are not allowed. Please use a real email address.", 400));
       }
 
-      // Check if email is already taken by another user
-      const existingUser = await UserModel.findOne({
-        email: newEmail,
-        _id: { $ne: user._id }
-      });
+      // Only check for email conflicts if the email is actually changing
+      if (newEmail !== user.email) {
+        const existingUser = await UserModel.findOne({
+          email: newEmail,
+          _id: { $ne: user._id }
+        });
 
-      if (existingUser) {
-        return next(new AppError("This email address is already in use by another account", 400));
+        if (existingUser) {
+          return next(new AppError("This email address is already in use by another account", 400));
+        }
       }
 
       // Only reset verification status if email actually changed

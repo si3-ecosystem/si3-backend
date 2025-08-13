@@ -74,6 +74,16 @@ export const validateConnectWallet = [
     .withMessage("Invalid signature format")
     .matches(/^0x[a-fA-F0-9]+$/)
     .withMessage("Signature must be a valid hex string"),
+
+  body("connectedWallet")
+    .optional()
+    .isIn(["Zerion", "MetaMask", "WalletConnect", "Other"])
+    .withMessage("Invalid wallet type. Must be one of: Zerion, MetaMask, WalletConnect, Other"),
+
+  body("network")
+    .optional()
+    .isIn(["Mainnet", "Polygon", "Arbitrum", "Base", "Optimism"])
+    .withMessage("Invalid network. Must be one of: Mainnet, Polygon, Arbitrum, Base, Optimism"),
 ];
 
 // User profile update validation (optional fields for registration)
@@ -282,4 +292,33 @@ export const validateEmailVerification = [
     .withMessage("Verification code must be numeric")
     .isLength({ min: 6, max: 6 })
     .withMessage("Verification code must be 6 digits"),
+
+  body("email")
+    .optional()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Please provide a valid email address")
+    .custom((value) => {
+      if (value && value.includes('@wallet.temp')) {
+        throw new Error("Wallet temporary emails are not allowed. Please use a real email address.");
+      }
+      return true;
+    }),
+];
+
+// New email verification validation
+export const validateNewEmailVerification = [
+  body("email")
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Please provide a valid email address")
+    .isLength({ max: 254 })
+    .withMessage("Email address is too long")
+    .custom((value) => {
+      if (value && value.includes('@wallet.temp')) {
+        throw new Error("Wallet temporary emails are not allowed. Please use a real email address.");
+      }
+      return true;
+    }),
 ];
