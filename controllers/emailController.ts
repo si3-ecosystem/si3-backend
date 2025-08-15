@@ -37,9 +37,16 @@ interface GuideFormData {
   name: string;
   email: string;
   interests: string[];
+  customPronoun?: string;
   digitalLink: string;
   daoInterests: string;
   personalValues: string;
+  socialHandles: {
+    linkedin?: string;
+    x?: string;
+    farcaster?: string;
+  };
+  howDidYouHear: string;
 }
 
 interface PartnerFormData {
@@ -706,8 +713,15 @@ export const sendPartnerSubmissionEmail = catchAsync(
  *     "email": "jane.smith@example.com",
  *     "daoInterests": "DeFi and Governance",
  *     "interests": ["Blockchain", "Community Building", "Education"],
+ *     "customPronoun": "she/her",
  *     "personalValues": "I believe in transparency, inclusivity, and innovation...",
- *     "digitalLink": "https://linkedin.com/in/janesmith"
+ *     "socialHandles": {
+ *       "linkedin": "https://linkedin.com/in/janesmith",
+ *       "x": "https://x.com/janesmith",
+ *       "farcaster": "https://warpcast.com/janesmith"
+ *     },
+ *     "howDidYouHear": "I heard about SI3 through a friend in the crypto community",
+ *     "digitalLink": "https://janesmith.dev"
  *   }
  * }
  *

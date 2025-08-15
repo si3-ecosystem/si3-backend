@@ -21,9 +21,16 @@ export interface GuidesSubmissionData {
   email: string;
   createdAt?: Date;
   interests: string[];
+  customPronoun?: string;
   digitalLink: string;
   daoInterests: string;
   personalValues: string;
+  socialHandles: {
+    linkedin?: string;
+    x?: string;
+    farcaster?: string;
+  };
+  howDidYouHear: string;
 }
 
 export interface DiversitySubmissionData {
@@ -129,8 +136,29 @@ export const guidesSubmissionTemplate = (
     Array.isArray(data.interests) && data.interests.length > 0
       ? data.interests.join(", ")
       : "N/A"
-  }</td> </tr> <tr> <td class="label">Personal Values:</td> <td class="value" style="white-space: pre-line;">${
+  }</td> </tr> ${
+    data.customPronoun
+      ? `<tr> <td class="label">Custom Pronoun:</td> <td class="value">${data.customPronoun}</td> </tr>`
+      : ""
+  } <tr> <td class="label">Personal Values:</td> <td class="value" style="white-space: pre-line;">${
     data.personalValues || "N/A"
+  }</td> </tr> <tr> <td class="label">Social Handles:</td> <td class="value">${
+    (() => {
+      if (!data.socialHandles) return "N/A";
+      const handles = [];
+      if (data.socialHandles.linkedin) {
+        handles.push(`<a href="${data.socialHandles.linkedin}" target="_blank" style="color: #C258FF; text-decoration: none;">LinkedIn</a>`);
+      }
+      if (data.socialHandles.x) {
+        handles.push(`<a href="${data.socialHandles.x}" target="_blank" style="color: #C258FF; text-decoration: none;">X (Twitter)</a>`);
+      }
+      if (data.socialHandles.farcaster) {
+        handles.push(`<a href="${data.socialHandles.farcaster}" target="_blank" style="color: #C258FF; text-decoration: none;">Farcaster</a>`);
+      }
+      return handles.length > 0 ? handles.join(", ") : "N/A";
+    })()
+  }</td> </tr> <tr> <td class="label">How Did You Hear About Us:</td> <td class="value" style="white-space: pre-line;">${
+    data.howDidYouHear || "N/A"
   }</td> </tr> <tr> <td class="label">Digital Link:</td> <td class="value">${
     data.digitalLink
       ? `<a href="${data.digitalLink}" target="_blank" style="color: #C258FF; text-decoration: none;">${data.digitalLink}</a>`
