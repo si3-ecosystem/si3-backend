@@ -208,26 +208,77 @@ exports.verifyWalletSignature = (0, catchAsync_1.default)((req, res, next) => __
     }
     // Clear nonce from Redis
     yield redisHelper_1.default.cacheDelete(nonceKey);
-    // Find or create user
+    // Find or create user - check both wallet address and temp email
+    const tempEmail = `${wallet_address.toLowerCase()}@wallet.temp`;
     let user = yield usersModel_1.default.findOne({
-        wallet_address: wallet_address.toLowerCase(),
+        $or: [
+            { wallet_address: wallet_address.toLowerCase() },
+            { email: tempEmail }
+        ]
     });
     let isNewUser = false;
+    console.log(`[WALLET AUTH DEBUG] Wallet: ${wallet_address.toLowerCase()}`);
+    console.log(`[WALLET AUTH DEBUG] Temp email: ${tempEmail}`);
+    console.log(`[WALLET AUTH DEBUG] Found existing user:`, user ? {
+        id: user._id,
+        email: user.email,
+        wallet: user.wallet_address,
+        isVerified: user.isVerified
+    } : 'None');
     if (!user) {
         // Create new user with temporary email
-        const tempEmail = `${wallet_address.toLowerCase()}@wallet.temp`;
-        user = new usersModel_1.default({
-            email: tempEmail,
-            wallet_address: wallet_address.toLowerCase(),
-            isVerified: true,
-            roles: [usersModel_1.UserRole.SCHOLAR], // Default role
-            lastLogin: new Date(),
-        });
-        yield user.save();
-        isNewUser = true;
+        console.log(`[WALLET AUTH DEBUG] Creating new wallet user`);
+        try {
+            user = new usersModel_1.default({
+                email: tempEmail,
+                wallet_address: wallet_address.toLowerCase(),
+                isVerified: false, // Email not verified yet
+                isWalletVerified: true, // Wallet is verified by signature
+                roles: [usersModel_1.UserRole.SCHOLAR], // Default role
+                lastLogin: new Date(),
+            });
+            yield user.save();
+            isNewUser = true;
+            console.log(`[WALLET AUTH DEBUG] New user created:`, {
+                id: user._id,
+                email: user.email,
+                wallet: user.wallet_address
+            });
+        }
+        catch (error) {
+            console.log(`[WALLET AUTH DEBUG] Error creating user:`, error.message);
+            // If there's a duplicate key error, try to find the existing user
+            if (error.code === 11000) {
+                console.log(`[WALLET AUTH DEBUG] Duplicate key error, finding existing user`);
+                user = yield usersModel_1.default.findOne({
+                    $or: [
+                        { wallet_address: wallet_address.toLowerCase() },
+                        { email: tempEmail }
+                    ]
+                });
+                if (user) {
+                    console.log(`[WALLET AUTH DEBUG] Found existing user after duplicate error:`, {
+                        id: user._id,
+                        email: user.email,
+                        wallet: user.wallet_address
+                    });
+                    // Update existing user
+                    user.lastLogin = new Date();
+                    yield user.save({ validateBeforeSave: false });
+                }
+                else {
+                    return next(AppError_1.default.conflict("Unable to create or find user account"));
+                }
+            }
+            else {
+                return next(AppError_1.default.internalServerError(`Account creation failed: ${error.message}`));
+            }
+        }
     }
     else {
         // Update existing user
+        console.log(`[WALLET AUTH DEBUG] Logging into existing user`);
+        user.isWalletVerified = true; // Ensure wallet is verified
         user.lastLogin = new Date();
         yield user.save({ validateBeforeSave: false });
     }
@@ -268,6 +319,7 @@ exports.connectWallet = (0, catchAsync_1.default)((req, res, next) => __awaiter(
     }
     // Connect wallet to user
     user.wallet_address = wallet_address.toLowerCase();
+    user.isWalletVerified = true; // Mark wallet as verified
     yield user.save();
     // Clear nonce from Redis
     yield redisHelper_1.default.cacheDelete(nonceKey);
@@ -284,6 +336,7 @@ exports.disconnectWallet = (0, catchAsync_1.default)((req, res, next) => __await
     }
     // Remove wallet from user
     user.wallet_address = undefined;
+    user.isWalletVerified = false; // Remove wallet verification
     yield user.save();
     // Generate new token with updated user data
     authUtils_1.default.createSendToken(user, 200, res, "Wallet disconnected successfully");
