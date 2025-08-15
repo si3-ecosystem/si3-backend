@@ -60,18 +60,19 @@ const NONCE_KEY_PREFIX = "auth:nonce:";
 const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "600", 10); // 1 minute
+const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS ||
+    (process.env.NODE_ENV === "development" ? "0" : "60"), 10); // 0 seconds in development (disabled), 1 minute in production
 /**
  * Send OTP to email for passwordless login
  */
 exports.sendEmailOTP = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { email } = req.body;
-    // Rate limiting (disabled for development)
+    // Rate limiting (configurable)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}email:${email}`;
-    if (process.env.NODE_ENV === "production") {
+    if (RATE_LIMIT_SECONDS > 0) {
         const isLimited = yield redisHelper_1.default.cacheGet(rateLimitKey);
         if (isLimited) {
-            return next(AppError_1.default.tooManyRequests("Please wait before requesting another OTP"));
+            return next(AppError_1.default.tooManyRequests(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another OTP`));
         }
     }
     // Generate OTP
@@ -79,8 +80,8 @@ exports.sendEmailOTP = (0, catchAsync_1.default)((req, res, next) => __awaiter(v
     // Store OTP in Redis
     const otpKey = `${OTP_KEY_PREFIX}${email}`;
     yield redisHelper_1.default.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
-    // Set rate limit (only in production)
-    if (process.env.NODE_ENV === "production") {
+    // Set rate limit (only if enabled)
+    if (RATE_LIMIT_SECONDS > 0) {
         yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
     }
     const applicantConfirmationHtml = (0, emailTemplates_1.otpEmailTemplate)(otp, email);
@@ -156,12 +157,12 @@ exports.verifyEmailOTP = (0, catchAsync_1.default)((req, res, next) => __awaiter
  */
 exports.requestWalletSignature = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { wallet_address } = req.body;
-    // Rate limiting (disabled for development)
+    // Rate limiting (configurable)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}wallet:${wallet_address}`;
-    if (process.env.NODE_ENV === "production") {
+    if (RATE_LIMIT_SECONDS > 0) {
         const isLimited = yield redisHelper_1.default.cacheGet(rateLimitKey);
         if (isLimited) {
-            return next(AppError_1.default.tooManyRequests("Please wait before requesting another signature"));
+            return next(AppError_1.default.tooManyRequests(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another signature`));
         }
     }
     // Generate nonce
@@ -170,8 +171,8 @@ exports.requestWalletSignature = (0, catchAsync_1.default)((req, res, next) => _
     // Store nonce in Redis
     const nonceKey = `${NONCE_KEY_PREFIX}${wallet_address}`;
     yield redisHelper_1.default.cacheSet(nonceKey, nonce, NONCE_TTL_SECONDS);
-    // Set rate limit (only in production)
-    if (process.env.NODE_ENV === "production") {
+    // Set rate limit (only if enabled)
+    if (RATE_LIMIT_SECONDS > 0) {
         yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
     }
     res.status(200).json({
@@ -319,9 +320,9 @@ exports.sendEmailVerification = (0, catchAsync_1.default)((req, res, next) => __
         console.log(`[EMAIL VERIFICATION DEBUG] Blocking verified user without temp email`);
         return next(new AppError_1.default("Email is already verified", 400));
     }
-    // Check rate limit (disabled for development)
+    // Check rate limit (configurable)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${email}`;
-    if (process.env.NODE_ENV === "production") {
+    if (RATE_LIMIT_SECONDS > 0) {
         const rateLimitCheck = yield redisHelper_1.default.cacheGet(rateLimitKey);
         if (rateLimitCheck) {
             return next(new AppError_1.default(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`, 429));
@@ -332,8 +333,8 @@ exports.sendEmailVerification = (0, catchAsync_1.default)((req, res, next) => __
     // Store OTP in Redis with verification prefix
     const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
     yield redisHelper_1.default.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
-    // Set rate limit (only in production)
-    if (process.env.NODE_ENV === "production") {
+    // Set rate limit (only if enabled)
+    if (RATE_LIMIT_SECONDS > 0) {
         yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
     }
     // Create verification email template
@@ -361,14 +362,8 @@ exports.sendEmailVerification = (0, catchAsync_1.default)((req, res, next) => __
  * Send email verification to a new email address for email update
  */
 exports.sendEmailVerificationToNewEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    console.log(`[NEW EMAIL DEBUG] Request body:`, req.body);
-    console.log(`[NEW EMAIL DEBUG] Request headers content-type:`, req.headers['content-type']);
     const { email: newEmail } = req.body;
     const user = req.user;
-    console.log(`[NEW EMAIL DEBUG] Extracted email:`, newEmail);
-    console.log(`[NEW EMAIL DEBUG] Email type:`, typeof newEmail);
-    // Simple validation
     if (!newEmail) {
         return next(new AppError_1.default("Email is required", 400));
     }
@@ -378,15 +373,6 @@ exports.sendEmailVerificationToNewEmail = (0, catchAsync_1.default)((req, res, n
     if (newEmail.includes('@wallet.temp')) {
         return next(new AppError_1.default("Wallet temporary emails are not allowed", 400));
     }
-    console.log(`[NEW EMAIL VERIFICATION DEBUG] User attempting to verify new email:`, {
-        userId: user._id,
-        currentEmail: user.email,
-        newEmail: newEmail,
-        isVerified: user.isVerified,
-        hasWallet: !!user.wallet_address,
-        isTempEmail: (_a = user.email) === null || _a === void 0 ? void 0 : _a.includes('@wallet.temp')
-    });
-    // Check if the new email is already taken by another user
     const existingUser = yield usersModel_1.default.findOne({
         email: newEmail,
         _id: { $ne: user._id }
@@ -394,9 +380,9 @@ exports.sendEmailVerificationToNewEmail = (0, catchAsync_1.default)((req, res, n
     if (existingUser) {
         return next(new AppError_1.default("This email address is already in use by another account", 400));
     }
-    // Check rate limit (disabled for development)
+    // Check rate limit (configurable)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${newEmail}`;
-    if (process.env.NODE_ENV === "production") {
+    if (RATE_LIMIT_SECONDS > 0) {
         const rateLimitCheck = yield redisHelper_1.default.cacheGet(rateLimitKey);
         if (rateLimitCheck) {
             return next(new AppError_1.default(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`, 429));
@@ -404,11 +390,10 @@ exports.sendEmailVerificationToNewEmail = (0, catchAsync_1.default)((req, res, n
     }
     // Generate OTP
     const otp = authUtils_1.default.generateOTP(6);
-    // Store OTP in Redis with verification prefix for the NEW email
     const otpKey = `verification:${OTP_KEY_PREFIX}${newEmail}`;
     yield redisHelper_1.default.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
-    // Set rate limit (only in production)
-    if (process.env.NODE_ENV === "production") {
+    // Set rate limit (only if enabled)
+    if (RATE_LIMIT_SECONDS > 0) {
         yield redisHelper_1.default.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
     }
     // Create verification email template
@@ -502,9 +487,7 @@ exports.verifyEmailVerification = (0, catchAsync_1.default)((req, res, next) => 
  * Get current user profile
  */
 exports.getMe = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     const user = req.user;
-  
     // Ensure default notification settings exist
     if (!user.notificationSettings) {
         user.notificationSettings = {

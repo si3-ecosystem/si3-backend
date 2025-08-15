@@ -23,7 +23,11 @@ const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "600", 10); // 1 minute
+const RATE_LIMIT_SECONDS = parseInt(
+  process.env.RATE_LIMIT_SECONDS ||
+  (process.env.NODE_ENV === "development" ? "0" : "30"),
+  10
+); // 0 seconds in development (disabled), 1 minute in production
 
 /**
  * Send OTP to email for passwordless login
@@ -33,15 +37,15 @@ export const sendEmailOTP = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email } = req.body;
 
-    // Rate limiting (disabled for development)
+    // Rate limiting (configurable)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}email:${email}`;
 
-    if (process.env.NODE_ENV === "production") {
+    if (RATE_LIMIT_SECONDS > 0) {
       const isLimited = await redisHelper.cacheGet(rateLimitKey);
 
       if (isLimited) {
         return next(
-          AppError.tooManyRequests("Please wait before requesting another OTP")
+          AppError.tooManyRequests(`Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another OTP`)
         );
       }
     }
@@ -53,8 +57,8 @@ export const sendEmailOTP = catchAsync(
     const otpKey = `${OTP_KEY_PREFIX}${email}`;
     await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
 
-    // Set rate limit (only in production)
-    if (process.env.NODE_ENV === "production") {
+    // Set rate limit (only if enabled)
+    if (RATE_LIMIT_SECONDS > 0) {
       await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
     }
 
@@ -160,16 +164,16 @@ export const requestWalletSignature = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { wallet_address } = req.body;
 
-    // Rate limiting (disabled for development)
+    // Rate limiting (configurable)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}wallet:${wallet_address}`;
 
-    if (process.env.NODE_ENV === "production") {
+    if (RATE_LIMIT_SECONDS > 0) {
       const isLimited = await redisHelper.cacheGet(rateLimitKey);
 
       if (isLimited) {
         return next(
           AppError.tooManyRequests(
-            "Please wait before requesting another signature"
+            `Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another signature`
           )
         );
       }
@@ -183,8 +187,8 @@ export const requestWalletSignature = catchAsync(
     const nonceKey = `${NONCE_KEY_PREFIX}${wallet_address}`;
     await redisHelper.cacheSet(nonceKey, nonce, NONCE_TTL_SECONDS);
 
-    // Set rate limit (only in production)
-    if (process.env.NODE_ENV === "production") {
+    // Set rate limit (only if enabled)
+    if (RATE_LIMIT_SECONDS > 0) {
       await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
     }
 
@@ -389,10 +393,10 @@ export const sendEmailVerification = catchAsync(
       return next(new AppError("Email is already verified", 400));
     }
 
-    // Check rate limit (disabled for development)
+    // Check rate limit (configurable)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${email}`;
 
-    if (process.env.NODE_ENV === "production") {
+    if (RATE_LIMIT_SECONDS > 0) {
       const rateLimitCheck = await redisHelper.cacheGet(rateLimitKey);
 
       if (rateLimitCheck) {
@@ -412,8 +416,8 @@ export const sendEmailVerification = catchAsync(
     const otpKey = `verification:${OTP_KEY_PREFIX}${email}`;
     await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
 
-    // Set rate limit (only in production)
-    if (process.env.NODE_ENV === "production") {
+    // Set rate limit (only if enabled)
+    if (RATE_LIMIT_SECONDS > 0) {
       await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
     }
 
@@ -447,16 +451,10 @@ export const sendEmailVerification = catchAsync(
  */
 export const sendEmailVerificationToNewEmail = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    console.log(`[NEW EMAIL DEBUG] Request body:`, req.body);
-    console.log(`[NEW EMAIL DEBUG] Request headers content-type:`, req.headers['content-type']);
 
     const { email: newEmail } = req.body;
     const user = req.user as IUser;
 
-    console.log(`[NEW EMAIL DEBUG] Extracted email:`, newEmail);
-    console.log(`[NEW EMAIL DEBUG] Email type:`, typeof newEmail);
-
-    // Simple validation
     if (!newEmail) {
       return next(new AppError("Email is required", 400));
     }
@@ -469,16 +467,6 @@ export const sendEmailVerificationToNewEmail = catchAsync(
       return next(new AppError("Wallet temporary emails are not allowed", 400));
     }
 
-    console.log(`[NEW EMAIL VERIFICATION DEBUG] User attempting to verify new email:`, {
-      userId: user._id,
-      currentEmail: user.email,
-      newEmail: newEmail,
-      isVerified: user.isVerified,
-      hasWallet: !!user.wallet_address,
-      isTempEmail: user.email?.includes('@wallet.temp')
-    });
-
-    // Check if the new email is already taken by another user
     const existingUser = await UserModel.findOne({
       email: newEmail,
       _id: { $ne: user._id }
@@ -488,10 +476,10 @@ export const sendEmailVerificationToNewEmail = catchAsync(
       return next(new AppError("This email address is already in use by another account", 400));
     }
 
-    // Check rate limit (disabled for development)
+    // Check rate limit (configurable)
     const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${newEmail}`;
 
-    if (process.env.NODE_ENV === "production") {
+    if (RATE_LIMIT_SECONDS > 0) {
       const rateLimitCheck = await redisHelper.cacheGet(rateLimitKey);
 
       if (rateLimitCheck) {
@@ -507,12 +495,11 @@ export const sendEmailVerificationToNewEmail = catchAsync(
     // Generate OTP
     const otp = authUtils.generateOTP(6);
 
-    // Store OTP in Redis with verification prefix for the NEW email
     const otpKey = `verification:${OTP_KEY_PREFIX}${newEmail}`;
     await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
 
-    // Set rate limit (only in production)
-    if (process.env.NODE_ENV === "production") {
+    // Set rate limit (only if enabled)
+    if (RATE_LIMIT_SECONDS > 0) {
       await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
     }
 
