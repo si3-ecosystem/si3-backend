@@ -119,6 +119,11 @@ const userSchema = new mongoose_1.Schema({
         default: false,
         index: true,
     },
+    isWalletVerified: {
+        type: Boolean,
+        default: false,
+        index: true,
+    },
     lastLogin: {
         type: Date,
         default: null,
@@ -266,6 +271,7 @@ userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ roles: 1 });
 userSchema.index({ wallet_address: 1 }, { sparse: true });
 userSchema.index({ isVerified: 1, createdAt: -1 });
+userSchema.index({ isWalletVerified: 1, createdAt: -1 });
 userSchema.index({ lastLogin: -1 });
 userSchema.index({ "walletInfo.address": 1 }, { sparse: true });
 userSchema.index({ settingsUpdatedAt: -1 });
@@ -291,9 +297,12 @@ userSchema.pre("save", function (next) {
             }
         });
     }
-    // Update lastLogin if user is being verified
-    if (this.isModified("isVerified") && this.isVerified && !this.lastLogin) {
-        this.lastLogin = new Date();
+    // Update lastLogin if user is being verified (email or wallet)
+    if ((this.isModified("isVerified") && this.isVerified) ||
+        (this.isModified("isWalletVerified") && this.isWalletVerified)) {
+        if (!this.lastLogin) {
+            this.lastLogin = new Date();
+        }
     }
     next();
 });
