@@ -1,12 +1,22 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+// Interface for social handles
+export interface ISocialHandles {
+  linkedin?: string;
+  x?: string;
+  farcaster?: string;
+}
+
 // Interface for the document
 export interface IGuide extends Document {
   name: string;
   email: string;
   daoInterests: string;
   interests: string[];
+  customPronoun?: string;
   personalValues: string;
+  socialHandles: ISocialHandles;
+  howDidYouHear: string;
   digitalLink: string;
 
   createdAt: Date;
@@ -56,12 +66,62 @@ const guideSchema = new Schema<IGuide>(
       },
     },
 
+    customPronoun: {
+      type: String,
+      trim: true,
+      maxlength: [50, "Custom pronoun cannot exceed 50 characters"],
+    },
+
     personalValues: {
       type: String,
       required: [true, "Personal values are required"],
       trim: true,
       minlength: [1, "Personal values must be at least 1 character"],
       maxlength: [2000, "Personal values cannot exceed 2000 characters"],
+    },
+
+    socialHandles: {
+      linkedin: {
+        type: String,
+        trim: true,
+        validate: {
+          validator: function (url: string) {
+            if (!url) return true; // Optional field
+            return /^https?:\/\/(www\.)?linkedin\.com\//.test(url) || /^linkedin\.com\//.test(url);
+          },
+          message: "Please provide a valid LinkedIn URL",
+        },
+      },
+      x: {
+        type: String,
+        trim: true,
+        validate: {
+          validator: function (url: string) {
+            if (!url) return true; // Optional field
+            return /^https?:\/\/(www\.)?(twitter\.com|x\.com)\//.test(url) || /^(twitter\.com|x\.com)\//.test(url);
+          },
+          message: "Please provide a valid X (Twitter) URL",
+        },
+      },
+      farcaster: {
+        type: String,
+        trim: true,
+        validate: {
+          validator: function (url: string) {
+            if (!url) return true; // Optional field
+            return /^https?:\/\/(www\.)?warpcast\.com\//.test(url) || /^warpcast\.com\//.test(url);
+          },
+          message: "Please provide a valid Farcaster (Warpcast) URL",
+        },
+      },
+    },
+
+    howDidYouHear: {
+      type: String,
+      required: [true, "Please tell us how you heard about our DAO"],
+      trim: true,
+      minlength: [1, "How did you hear about us must be at least 1 character"],
+      maxlength: [500, "Response must be less than 500 characters"],
     },
 
     digitalLink: {
@@ -101,9 +161,22 @@ guideSchema.pre("save", function (next) {
       .filter((interest: string) => interest.length > 0);
   }
 
-  // Auto-add https:// if missing
+  // Auto-add https:// if missing for digitalLink
   if (this.digitalLink && !this.digitalLink.startsWith("http")) {
     this.digitalLink = `https://${this.digitalLink}`;
+  }
+
+  // Auto-add https:// if missing for social handles
+  if (this.socialHandles) {
+    if (this.socialHandles.linkedin && !this.socialHandles.linkedin.startsWith("http")) {
+      this.socialHandles.linkedin = `https://${this.socialHandles.linkedin}`;
+    }
+    if (this.socialHandles.x && !this.socialHandles.x.startsWith("http")) {
+      this.socialHandles.x = `https://${this.socialHandles.x}`;
+    }
+    if (this.socialHandles.farcaster && !this.socialHandles.farcaster.startsWith("http")) {
+      this.socialHandles.farcaster = `https://${this.socialHandles.farcaster}`;
+    }
   }
 
   next();
