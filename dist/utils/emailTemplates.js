@@ -34,7 +34,23 @@ const guidesSubmissionTemplate = (data) => {
     return `
     <!DOCTYPE html><html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1" /> <title>Si Her Guide Application</title> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@500;700&display=swap" rel="stylesheet" /> <style> body { margin: 0; padding: 0; background-color: #f4f4f4; font-family: 'Inter', Arial, sans-serif; } .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e0d5ff; } .header { background: linear-gradient(121.07deg, #211257 5.49%, #4C1192 48.19%, #790EB4 75.74%, #8A04C5 86.22%); color: #fff; padding: 24px; text-align: center; } .header h1 { margin: 0; font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 700; } .content { padding: 30px; color: #333; } .content p { font-size: 16px; line-height: 1.6; margin-top: 0; margin-bottom: 20px; color: #555; } .details-table { width: 100%; border-collapse: collapse; margin-top: 10px; } .details-table td { padding: 14px; vertical-align: top; font-size: 15px; } .details-table td.label { background-color: #faf5ff; color: #790EB4; font-weight: 600; width: 35%; border-bottom: 1px solid #eee; } .details-table td.value { background-color: #f9f9f9; color: #333; border-bottom: 1px solid #eee; } .footer { text-align: center; font-size: 13px; color: #999; padding: 20px; } @media only screen and (max-width: 600px) { .content { padding: 20px; } .details-table td { display: block; width: 100% !important; } .details-table td.label { border-bottom: none; } .details-table td.value { border-top: 0; padding-top: 4px; padding-bottom: 14px; } } </style> </head> <body> <div class="email-container"> <div class="header"> <h1>Si Her Guide Application</h1> </div> <div class="content"> <p> A new Si Her Guide application has been submitted: </p> <table class="details-table"> <tr> <td class="label">Name:</td> <td class="value">${data.name || "N/A"}</td> </tr> <tr> <td class="label">Email:</td> <td class="value">${data.email || "N/A"}</td> </tr> <tr> <td class="label">DAO Interests:</td> <td class="value">${data.daoInterests || "N/A"}</td> </tr> <tr> <td class="label">Interests:</td> <td class="value">${Array.isArray(data.interests) && data.interests.length > 0
         ? data.interests.join(", ")
-        : "N/A"}</td> </tr> <tr> <td class="label">Personal Values:</td> <td class="value" style="white-space: pre-line;">${data.personalValues || "N/A"}</td> </tr> <tr> <td class="label">Digital Link:</td> <td class="value">${data.digitalLink
+        : "N/A"}</td> </tr> ${data.customPronoun
+        ? `<tr> <td class="label">Custom Pronoun:</td> <td class="value">${data.customPronoun}</td> </tr>`
+        : ""} <tr> <td class="label">Personal Values:</td> <td class="value" style="white-space: pre-line;">${data.personalValues || "N/A"}</td> </tr> <tr> <td class="label">Social Handles:</td> <td class="value">${(() => {
+        if (!data.socialHandles)
+            return "N/A";
+        const handles = [];
+        if (data.socialHandles.linkedin) {
+            handles.push(`<a href="${data.socialHandles.linkedin}" target="_blank" style="color: #C258FF; text-decoration: none;">LinkedIn</a>`);
+        }
+        if (data.socialHandles.x) {
+            handles.push(`<a href="${data.socialHandles.x}" target="_blank" style="color: #C258FF; text-decoration: none;">X (Twitter)</a>`);
+        }
+        if (data.socialHandles.farcaster) {
+            handles.push(`<a href="${data.socialHandles.farcaster}" target="_blank" style="color: #C258FF; text-decoration: none;">Farcaster</a>`);
+        }
+        return handles.length > 0 ? handles.join(", ") : "N/A";
+    })()}</td> </tr> <tr> <td class="label">How Did You Hear About Us:</td> <td class="value" style="white-space: pre-line;">${data.howDidYouHear || "N/A"}</td> </tr> <tr> <td class="label">Digital Link:</td> <td class="value">${data.digitalLink
         ? `<a href="${data.digitalLink}" target="_blank" style="color: #C258FF; text-decoration: none;">${data.digitalLink}</a>`
         : "N/A"}</td> </tr> </table> </div> <div class="footer"> This is an automated notification. Please do not reply. </div> </div> </body></html>
   `;
