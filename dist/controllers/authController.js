@@ -60,8 +60,7 @@ const NONCE_KEY_PREFIX = "auth:nonce:";
 const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS ||
-    (process.env.NODE_ENV === "development" ? "0" : "60"), 10); // 0 seconds in development (disabled), 1 minute in production
+const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "0", 10); // Disabled by default, can be enabled via env var
 /**
  * Send OTP to email for passwordless login
  */
