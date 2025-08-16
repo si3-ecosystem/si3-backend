@@ -23,7 +23,7 @@ const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "0", 10); // Disabled by default, can be enabled via env var
+const RATE_LIMIT_SECONDS = 0; // Force disabled for debugging - was: parseInt(process.env.RATE_LIMIT_SECONDS || "0", 10);
 
 /**
  * Send OTP to email for passwordless login
