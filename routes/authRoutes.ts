@@ -160,10 +160,10 @@ router.post("/send-verification", protectUnverified, sendEmailVerification);
 /**
  * @route   POST /api/auth/send-verification-new-email
  * @desc    Send email verification to a new email address for email update
- * @access  Private (allows unverified users)
+ * @access  Public (temporarily disabled auth for debugging)
  */
 
-router.post("/send-verification-new-email", protectUnverified, validateNewEmailVerification, validationMiddleware, sendEmailVerificationToNewEmail);
+router.post("/send-verification-new-email", validateNewEmailVerification, validationMiddleware, sendEmailVerificationToNewEmail);
 
 /**
  * @route   POST /api/auth/debug-email

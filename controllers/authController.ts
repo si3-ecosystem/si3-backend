@@ -505,7 +505,8 @@ export const sendEmailVerificationToNewEmail = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 
     const { email: newEmail } = req.body;
-    const user = req.user as IUser;
+    // Temporarily disabled user authentication for debugging
+    // const user = req.user as IUser;
 
     if (!newEmail) {
       return next(new AppError("Email is required", 400));
@@ -519,14 +520,15 @@ export const sendEmailVerificationToNewEmail = catchAsync(
       return next(new AppError("Wallet temporary emails are not allowed", 400));
     }
 
-    const existingUser = await UserModel.findOne({
-      email: newEmail,
-      _id: { $ne: user._id }
-    });
+    // Temporarily disabled duplicate email check for debugging
+    // const existingUser = await UserModel.findOne({
+    //   email: newEmail,
+    //   _id: { $ne: user._id }
+    // });
 
-    if (existingUser) {
-      return next(new AppError("This email address is already in use by another account", 400));
-    }
+    // if (existingUser) {
+    //   return next(new AppError("This email address is already in use by another account", 400));
+    // }
 
     // Rate limiting disabled for new email verification
 
