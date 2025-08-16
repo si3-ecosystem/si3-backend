@@ -520,15 +520,14 @@ export const sendEmailVerificationToNewEmail = catchAsync(
       return next(new AppError("Wallet temporary emails are not allowed", 400));
     }
 
-    // Temporarily disabled duplicate email check for debugging
-    // const existingUser = await UserModel.findOne({
-    //   email: newEmail,
-    //   _id: { $ne: user._id }
-    // });
+    // Check if user with this email already exists
+    const existingUser = await UserModel.findOne({
+      email: newEmail
+    });
 
-    // if (existingUser) {
-    //   return next(new AppError("This email address is already in use by another account", 400));
-    // }
+    if (existingUser) {
+      return next(new AppError("User already exists with this email address", 400));
+    }
 
     // Rate limiting disabled for new email verification
 
