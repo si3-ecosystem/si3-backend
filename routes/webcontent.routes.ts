@@ -1,11 +1,11 @@
 // src/routes/webcontent.routes.ts
 import { Router } from 'express'
 import { publishWebContent, updateWebContent } from '../controllers/webcontent.controller'
-import auth from '../middlewares/auth'
+import { protect } from '../middleware/protectMiddleware'
 
 const router = Router()
 
-router.post('/publish', auth, publishWebContent)
-router.post('/update',  auth, updateWebContent)
+router.post('/publish', protect, publishWebContent)
+router.post('/update',  protect, updateWebContent)
 
 export default router

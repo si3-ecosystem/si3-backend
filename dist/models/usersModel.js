@@ -141,6 +141,19 @@ const userSchema = new mongoose_1.Schema({
             message: "Please provide a valid wallet address",
         },
     },
+    domain: {
+        type: String,
+        trim: true,
+        maxlength: [100, "Domain cannot exceed 100 characters"],
+        validate: {
+            validator: function (domain) {
+                if (!domain)
+                    return true; // Optional field
+                return /^[a-zA-Z0-9-]+$/.test(domain);
+            },
+            message: "Domain can only contain letters, numbers, and hyphens",
+        },
+    },
     roles: {
         type: [String],
         required: [true, "At least one role is required"],
@@ -270,6 +283,7 @@ const userSchema = new mongoose_1.Schema({
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ roles: 1 });
 userSchema.index({ wallet_address: 1 }, { sparse: true });
+userSchema.index({ domain: 1 }, { sparse: true });
 userSchema.index({ isVerified: 1, createdAt: -1 });
 userSchema.index({ isWalletVerified: 1, createdAt: -1 });
 userSchema.index({ lastLogin: -1 });

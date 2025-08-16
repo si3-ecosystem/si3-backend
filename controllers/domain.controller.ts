@@ -1,7 +1,7 @@
 // src/controllers/domain.controller.ts
 import axios from 'axios'
 import { Request, Response } from 'express'
-import User, { IUser } from '../models/User.model'
+import UserModel, { IUser } from '../models/usersModel'
 import WebContent, { IWebContent } from '../models/WebContent.model'
 
 // Environment variables (asserted non-null)
@@ -14,7 +14,7 @@ const errorResponse = (res: Response, status: number, message: string): Response
   res.status(status).json({ message })
 
 interface PublishDomainRequest extends Request {
-  user: { id: string; email: string; name: string; domain?: string }
+  user?: IUser
   body: { domain?: string }
 }
 
@@ -23,6 +23,10 @@ export const publishDomain = async (
   res: Response
 ): Promise<Response> => {
   try {
+    if (!req.user) {
+      return errorResponse(res, 401, 'Authentication required');
+    }
+
     const { domain } = req.body
 
     if (!domain) {
@@ -30,16 +34,16 @@ export const publishDomain = async (
     }
 
     // Check if subdomain is already taken
-    const existingUser: IUser | null = await User.findOne({ domain }).exec()
+    const existingUser: IUser | null = await UserModel.findOne({ domain }).exec()
     if (existingUser) {
       return errorResponse(res, 400, 'Subdomain already registered.')
     }
 
     // Ensure content is published
-    const webpage: IWebContent | null = await WebContent.findOne({ user: req.user.id }).exec()
+    const webpage: IWebContent | null = await WebContent.findOne({ user: req.user._id }).exec()
     const cid = webpage?.contentHash ?? ''
     if (!cid) {
-      console.log('[publishDomain] No content hash found for user:', req.user.id)
+      console.log('[publishDomain] No content hash found for user:', req.user._id)
       return errorResponse(
         res,
         400,
@@ -54,8 +58,8 @@ export const publishDomain = async (
     }
 
     // Update user record
-    const updatedUser: IUser | null = await User.findByIdAndUpdate(
-      req.user.id,
+    const updatedUser: IUser | null = await UserModel.findByIdAndUpdate(
+      req.user._id,
       { domain },
       { new: true }
     ).exec()

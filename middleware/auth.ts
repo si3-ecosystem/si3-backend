@@ -31,10 +31,11 @@ const auth = (
       process.env.JWT_SECRET!
     ) as TokenPayload
 
-    req.user = {
+    // Note: This middleware is deprecated, use protectMiddleware instead
+    (req as any).user = {
       id:    decoded.id,
       email: decoded.email,
-      name:  decoded.name
+      username:  decoded.name
     }
 
     next()

@@ -1,15 +1,11 @@
 
 import 'express';
+import { IUser } from '../models/usersModel';
 
 declare global {
   namespace Express {
     interface Request {
-      user: {
-        id:     string;
-        email:  string;
-        name:   string;
-        domain?: string;  // if you use this elsewhere
-      };
+      user?: IUser;
     }
   }
 }

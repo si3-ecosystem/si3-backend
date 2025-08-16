@@ -1,7 +1,7 @@
 // src/controllers/users.controller.ts
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
-import User, { IUser } from '../models/User.model';
+import UserModel, { IUser } from '../models/usersModel';
 import SubscriberEmail, { ISubscriberEmail } from '../models/SubscriberEmail.model';
 
 /**
@@ -13,7 +13,7 @@ export const getUsers = async (
   next: NextFunction
 ): Promise<Response | void> => {
   try {
-    const users = (await User.aggregate([
+    const users = (await UserModel.aggregate([
       { $match: { password: { $ne: null } } },
       {
         $lookup: {

@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import ejs from 'ejs';
 import path from 'path';
-import auth from '../middlewares/auth';
+
 
 import {
   ILanding,
@@ -18,7 +18,7 @@ const router = express.Router();
 
 router.get(
   '/render',
-  (req: express.Request, res: express.Response): express.Response => {
+  (req: express.Request, res: express.Response) => {
     try {
       const content: {
         landing: ILanding;

@@ -16,12 +16,12 @@ import WebContent, {
   AvailableSection,
   SocialChannel
 } from '../models/WebContent.model'
-import User, { IUser } from '../models/User.model'
+import UserModel, { IUser } from '../models/usersModel'
 import { uploadToFileStorage, deleteFromFileStorage } from '../utils/fileStorage.utils'
 import { registerSubdomain } from './domain.controller'
 
 interface AuthRequest extends Request {
-  user: { id: string; email: string; name: string; domain?: string }
+  user?: IUser
   body: Partial<{
     landing: ILanding
     slider: string[]
@@ -37,8 +37,12 @@ interface AuthRequest extends Request {
 
 export const publishWebContent = async (req: AuthRequest, res: Response): Promise<Response> => {
   try {
-    console.log(`[WebContent] Starting publish operation for user: ${req.user.id}`)
-    const userId = req.user.id
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    console.log(`[WebContent] Starting publish operation for user: ${req.user._id}`)
+    const userId = req.user._id
     const contentData = req.body
 
     if (!userId) {
@@ -186,7 +190,7 @@ export const publishWebContent = async (req: AuthRequest, res: Response): Promis
     console.log(`[WebContent] Successfully published for user: ${userId}`)
     return res.status(201).json({ message: 'Published successfully' })
   } catch (error: any) {
-    console.error(`[WebContent] Error in publish operation for user: ${req.user.id}`, {
+    console.error(`[WebContent] Error in publish operation for user: ${req.user?._id}`, {
       name: error.name,
       message: error.message,
       stack: error.stack
@@ -211,8 +215,12 @@ export const publishWebContent = async (req: AuthRequest, res: Response): Promis
 
 export const updateWebContent = async (req: AuthRequest, res: Response): Promise<Response> => {
   try {
-    console.log(`[WebContent] Starting update operation for user: ${req.user.id}`)
-    const userId = req.user.id
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    console.log(`[WebContent] Starting update operation for user: ${req.user._id}`)
+    const userId = req.user._id
     const contentData = req.body
 
     if (!userId) {
@@ -247,7 +255,7 @@ export const updateWebContent = async (req: AuthRequest, res: Response): Promise
 
     const [webContent, user] = await Promise.all([
       WebContent.findOne({ user: userId }),
-      User.findById(userId)
+      UserModel.findById(userId)
     ])
 
     if (!webContent) {
@@ -306,7 +314,7 @@ export const updateWebContent = async (req: AuthRequest, res: Response): Promise
       contentHash: webContent.contentHash
     })
   } catch (error: any) {
-    console.error(`[WebContent] Error in update operation for user: ${req.user.id}`, {
+    console.error(`[WebContent] Error in update operation for user: ${req.user?._id}`, {
       name: error.name,
       message: error.message,
       stack: error.stack

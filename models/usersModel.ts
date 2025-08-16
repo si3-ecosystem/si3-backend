@@ -57,6 +57,7 @@ export interface IUser extends Document {
   interests: string[];
   companyName?: string;
   wallet_address?: string;
+  domain?: string;
   personalValues: string[];
   companyAffiliation?: string;
   digitalLinks: IDigitalLink[];
@@ -164,6 +165,19 @@ const userSchema = new Schema<IUser>(
           return /^0x[a-fA-F0-9]{40}$/.test(address);
         },
         message: "Please provide a valid wallet address",
+      },
+    },
+
+    domain: {
+      type: String,
+      trim: true,
+      maxlength: [100, "Domain cannot exceed 100 characters"],
+      validate: {
+        validator: function (domain: string) {
+          if (!domain) return true; // Optional field
+          return /^[a-zA-Z0-9-]+$/.test(domain);
+        },
+        message: "Domain can only contain letters, numbers, and hyphens",
       },
     },
 
@@ -310,6 +324,7 @@ const userSchema = new Schema<IUser>(
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ roles: 1 });
 userSchema.index({ wallet_address: 1 }, { sparse: true });
+userSchema.index({ domain: 1 }, { sparse: true });
 userSchema.index({ isVerified: 1, createdAt: -1 });
 userSchema.index({ isWalletVerified: 1, createdAt: -1 });
 userSchema.index({ lastLogin: -1 });
