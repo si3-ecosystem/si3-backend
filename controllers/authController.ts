@@ -528,21 +528,7 @@ export const sendEmailVerificationToNewEmail = catchAsync(
       return next(new AppError("This email address is already in use by another account", 400));
     }
 
-    // Check rate limit (configurable)
-    const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${newEmail}`;
-
-    if (RATE_LIMIT_SECONDS > 0) {
-      const rateLimitCheck = await redisHelper.cacheGet(rateLimitKey);
-
-      if (rateLimitCheck) {
-        return next(
-          new AppError(
-            `Please wait ${RATE_LIMIT_SECONDS} seconds before requesting another verification code`,
-            429
-          )
-        );
-      }
-    }
+    // Rate limiting disabled for new email verification
 
     // Generate OTP
     const otp = authUtils.generateOTP(6);
@@ -550,10 +536,7 @@ export const sendEmailVerificationToNewEmail = catchAsync(
     const otpKey = `verification:${OTP_KEY_PREFIX}${newEmail}`;
     await redisHelper.cacheSet(otpKey, otp, OTP_TTL_SECONDS);
 
-    // Set rate limit (only if enabled)
-    if (RATE_LIMIT_SECONDS > 0) {
-      await redisHelper.cacheSet(rateLimitKey, "1", RATE_LIMIT_SECONDS);
-    }
+    // Rate limiting disabled for new email verification
 
     // Create verification email template
     const verificationHtml = otpEmailTemplate(otp, newEmail, "Email Verification");
