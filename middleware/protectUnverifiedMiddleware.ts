@@ -21,6 +21,14 @@ declare global {
  */
 export const protectUnverified = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // Debug logging
+    console.log('[protectUnverified] Headers:', {
+      authorization: req.headers.authorization,
+      cookie: req.headers.cookie,
+      'user-agent': req.headers['user-agent']
+    });
+    console.log('[protectUnverified] Cookies:', req.cookies);
+
     // 1) Getting token and check if it's there
     let token: string | null = null;
 
@@ -30,14 +38,19 @@ export const protectUnverified = catchAsync(
       req.headers.authorization.startsWith("Bearer")
     ) {
       token = req.headers.authorization.split(" ")[1];
+      console.log('[protectUnverified] Token from Authorization header:', token ? 'Found' : 'Not found');
     }
 
     // Check cookies
     if (!token && req.cookies) {
       token = authUtils.extractToken(req.headers.authorization, req.cookies);
+      console.log('[protectUnverified] Token from cookies:', token ? 'Found' : 'Not found');
     }
 
+    console.log('[protectUnverified] Final token status:', token ? 'Token available' : 'No token found');
+
     if (!token) {
+      console.log('[protectUnverified] No token found, returning 401');
       return next(
         AppError.unauthorized(
           "You are not logged in! Please log in to get access."
@@ -48,8 +61,11 @@ export const protectUnverified = catchAsync(
     // 2) Verification token
     let decoded;
     try {
+      console.log('[protectUnverified] Attempting to verify token...');
       decoded = authUtils.verifyToken(token);
+      console.log('[protectUnverified] Token verified successfully for user:', decoded._id);
     } catch (error) {
+      console.log('[protectUnverified] Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
       return next(AppError.unauthorized("Invalid token. Please log in again!"));
     }
 
