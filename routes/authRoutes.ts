@@ -163,7 +163,7 @@ router.post("/send-verification", protectUnverified, sendEmailVerification);
  * @access  Private (allows unverified users)
  */
 
-router.post("/send-verification-new-email", protectUnverified, sendEmailVerificationToNewEmail);
+router.post("/send-verification-new-email", protectUnverified, validateNewEmailVerification, validationMiddleware, sendEmailVerificationToNewEmail);
 
 /**
  * @route   POST /api/auth/debug-email
