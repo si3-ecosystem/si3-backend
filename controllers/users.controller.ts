@@ -11,7 +11,7 @@ export const getUsers = async (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<Response | void> => {
+): Promise<void> => {
   try {
     const users = (await UserModel.aggregate([
       { $match: { password: { $ne: null } } },
@@ -40,9 +40,9 @@ export const getUsers = async (
       },
     ])) as Array<{ _id: mongoose.Types.ObjectId; domain: string; fullName: string; image: string }>;
 
-    return res.status(200).json(users);
+    res.status(200).json(users);
   } catch (err) {
-    return next(err);
+    next(err);
   }
 };
 
@@ -53,31 +53,34 @@ export const subscribeEmail = async (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<Response | void> => {
+): Promise<void> => {
   try {
     const { email } = req.query as { email?: string };
     if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+      res.status(400).json({ message: 'Email is required' });
+      return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'Please provide a valid email address' });
+      res.status(400).json({ message: 'Please provide a valid email address' });
+      return;
     }
 
     const existing: ISubscriberEmail | null = await SubscriberEmail.findOne({ email });
     if (existing) {
-      return res.status(409).json({ message: 'Email is already subscribed' });
+      res.status(409).json({ message: 'Email is already subscribed' });
+      return;
     }
 
     const newSub: ISubscriberEmail = new SubscriberEmail({ email });
     await newSub.save();
 
-    return res.status(201).json({
+    res.status(201).json({
       message: 'Email subscribed successfully',
       email,
     });
   } catch (err) {
-    return next(err);
+    next(err);
   }
 };

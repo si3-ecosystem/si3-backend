@@ -35,10 +35,11 @@ interface AuthRequest extends Request {
   }>
 }
 
-export const publishWebContent = async (req: AuthRequest, res: Response): Promise<Response> => {
+export const publishWebContent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required' });
+      res.status(401).json({ message: 'Authentication required' });
+      return;
     }
 
     console.log(`[WebContent] Starting publish operation for user: ${req.user._id}`)
@@ -47,7 +48,8 @@ export const publishWebContent = async (req: AuthRequest, res: Response): Promis
 
     if (!userId) {
       console.error(`[WebContent] Invalid user ID in publish operation`)
-      return res.status(400).json({ message: 'Invalid user ID' })
+      res.status(400).json({ message: 'Invalid user ID' });
+      return;
     }
 
     console.log(`[WebContent] Content sections to update:`, {
@@ -72,7 +74,8 @@ export const publishWebContent = async (req: AuthRequest, res: Response): Promis
       !contentData.socialChannels
     ) {
       console.log(`[WebContent] Missing content data for user: ${userId}`)
-      return res.status(400).json({ message: 'Missing content data' })
+      res.status(400).json({ message: 'Missing content data' });
+      return;
     }
 
     const content = {
@@ -188,7 +191,7 @@ export const publishWebContent = async (req: AuthRequest, res: Response): Promis
     }
 
     console.log(`[WebContent] Successfully published for user: ${userId}`)
-    return res.status(201).json({ message: 'Published successfully' })
+    res.status(201).json({ message: 'Published successfully' });
   } catch (error: any) {
     console.error(`[WebContent] Error in publish operation for user: ${req.user?._id}`, {
       name: error.name,
@@ -196,27 +199,29 @@ export const publishWebContent = async (req: AuthRequest, res: Response): Promis
       stack: error.stack
     })
     if (error.name === 'ValidationError') {
-      return res.status(400).json({
+      res.status(400).json({
         message: 'Validation error',
         error: error.errors,
         details: Object.keys(error.errors).map(key => ({
           field: key,
           message: error.errors[key].message
         }))
-      })
+      });
+      return;
     }
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Internal server error',
       error: error.message
-    })
+    });
   }
 }
 
 
-export const updateWebContent = async (req: AuthRequest, res: Response): Promise<Response> => {
+export const updateWebContent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required' });
+      res.status(401).json({ message: 'Authentication required' });
+      return;
     }
 
     console.log(`[WebContent] Starting update operation for user: ${req.user._id}`)
@@ -225,7 +230,8 @@ export const updateWebContent = async (req: AuthRequest, res: Response): Promise
 
     if (!userId) {
       console.error(`[WebContent] Invalid user ID in update operation`)
-      return res.status(400).json({ message: 'Invalid user ID' })
+      res.status(400).json({ message: 'Invalid user ID' });
+      return;
     }
 
     console.log(`[WebContent] Content sections to update:`, {
@@ -250,7 +256,8 @@ export const updateWebContent = async (req: AuthRequest, res: Response): Promise
       !contentData.socialChannels
     ) {
       console.log(`[WebContent] Missing content data for update - user: ${userId}`)
-      return res.status(400).json({ message: 'Missing content data' })
+      res.status(400).json({ message: 'Missing content data' });
+      return;
     }
 
     const [webContent, user] = await Promise.all([
@@ -260,7 +267,8 @@ export const updateWebContent = async (req: AuthRequest, res: Response): Promise
 
     if (!webContent) {
       console.log(`[WebContent] No content found to update for user: ${userId}`)
-      return res.status(404).json({ message: 'No web content found to update' })
+      res.status(404).json({ message: 'No web content found to update' });
+      return;
     }
 
     if (webContent.contentHash) {
@@ -309,10 +317,10 @@ export const updateWebContent = async (req: AuthRequest, res: Response): Promise
     }
 
     console.log(`[WebContent] Successfully updated content for user: ${userId}`)
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Content updated successfully',
       contentHash: webContent.contentHash
-    })
+    });
   } catch (error: any) {
     console.error(`[WebContent] Error in update operation for user: ${req.user?._id}`, {
       name: error.name,
@@ -320,18 +328,19 @@ export const updateWebContent = async (req: AuthRequest, res: Response): Promise
       stack: error.stack
     })
     if (error.name === 'ValidationError') {
-      return res.status(400).json({
+      res.status(400).json({
         message: 'Validation error',
         error: error.errors,
         details: Object.keys(error.errors).map(key => ({
           field: key,
           message: error.errors[key].message
         }))
-      })
+      });
+      return;
     }
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Internal server error',
       error: error.message
-    })
+    });
   }
 }

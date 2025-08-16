@@ -21,22 +21,25 @@ interface PublishDomainRequest extends Request {
 export const publishDomain = async (
   req: PublishDomainRequest,
   res: Response
-): Promise<Response> => {
+): Promise<void> => {
   try {
     if (!req.user) {
-      return errorResponse(res, 401, 'Authentication required');
+      errorResponse(res, 401, 'Authentication required');
+      return;
     }
 
     const { domain } = req.body
 
     if (!domain) {
-      return errorResponse(res, 400, 'Domain is required.')
+      errorResponse(res, 400, 'Domain is required.');
+      return;
     }
 
     // Check if subdomain is already taken
     const existingUser: IUser | null = await UserModel.findOne({ domain }).exec()
     if (existingUser) {
-      return errorResponse(res, 400, 'Subdomain already registered.')
+      errorResponse(res, 400, 'Subdomain already registered.');
+      return;
     }
 
     // Ensure content is published
@@ -44,17 +47,19 @@ export const publishDomain = async (
     const cid = webpage?.contentHash ?? ''
     if (!cid) {
       console.log('[publishDomain] No content hash found for user:', req.user._id)
-      return errorResponse(
+      errorResponse(
         res,
         400,
         'Before selecting your domain name, please publish your webpage first.'
-      )
+      );
+      return;
     }
 
     // Register subdomain on external service
     const success = await registerSubdomain(domain, cid)
     if (!success) {
-      return errorResponse(res, 400, 'Could not register subdomain.')
+      errorResponse(res, 400, 'Could not register subdomain.');
+      return;
     }
 
     // Update user record
@@ -65,19 +70,20 @@ export const publishDomain = async (
     ).exec()
 
     if (!updatedUser) {
-      return errorResponse(res, 404, 'User not found.')
+      errorResponse(res, 404, 'User not found.');
+      return;
     }
 
-    return res
+    res
       .status(200)
-      .json({ domain: `${updatedUser.domain}.siher.eth.link` })
+      .json({ domain: `${updatedUser.domain}.siher.eth.link` });
   } catch (error: any) {
     console.error('[publishDomain] Error:', error)
-    return errorResponse(
+    errorResponse(
       res,
       500,
       error.message ?? 'Failed to publish domain'
-    )
+    );
   }
 }
 

@@ -46,10 +46,10 @@ const getUsers = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
                 },
             },
         ]));
-        return res.status(200).json(users);
+        res.status(200).json(users);
     }
     catch (err) {
-        return next(err);
+        next(err);
     }
 });
 exports.getUsers = getUsers;
@@ -60,25 +60,28 @@ const subscribeEmail = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
     try {
         const { email } = req.query;
         if (!email) {
-            return res.status(400).json({ message: 'Email is required' });
+            res.status(400).json({ message: 'Email is required' });
+            return;
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            return res.status(400).json({ message: 'Please provide a valid email address' });
+            res.status(400).json({ message: 'Please provide a valid email address' });
+            return;
         }
         const existing = yield SubscriberEmail_model_1.default.findOne({ email });
         if (existing) {
-            return res.status(409).json({ message: 'Email is already subscribed' });
+            res.status(409).json({ message: 'Email is already subscribed' });
+            return;
         }
         const newSub = new SubscriberEmail_model_1.default({ email });
         yield newSub.save();
-        return res.status(201).json({
+        res.status(201).json({
             message: 'Email subscribed successfully',
             email,
         });
     }
     catch (err) {
-        return next(err);
+        next(err);
     }
 });
 exports.subscribeEmail = subscribeEmail;

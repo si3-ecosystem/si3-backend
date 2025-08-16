@@ -27,14 +27,16 @@ const publishWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functi
     var _a, _b;
     try {
         if (!req.user) {
-            return res.status(401).json({ message: 'Authentication required' });
+            res.status(401).json({ message: 'Authentication required' });
+            return;
         }
         console.log(`[WebContent] Starting publish operation for user: ${req.user._id}`);
         const userId = req.user._id;
         const contentData = req.body;
         if (!userId) {
             console.error(`[WebContent] Invalid user ID in publish operation`);
-            return res.status(400).json({ message: 'Invalid user ID' });
+            res.status(400).json({ message: 'Invalid user ID' });
+            return;
         }
         console.log(`[WebContent] Content sections to update:`, {
             hasLanding: !!contentData.landing,
@@ -55,7 +57,8 @@ const publishWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functi
             !contentData.available &&
             !contentData.socialChannels) {
             console.log(`[WebContent] Missing content data for user: ${userId}`);
-            return res.status(400).json({ message: 'Missing content data' });
+            res.status(400).json({ message: 'Missing content data' });
+            return;
         }
         const content = {
             landing: contentData.landing || {},
@@ -166,7 +169,7 @@ const publishWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functi
             throw new Error(`Failed to save content: ${saveError.message}`);
         }
         console.log(`[WebContent] Successfully published for user: ${userId}`);
-        return res.status(201).json({ message: 'Published successfully' });
+        res.status(201).json({ message: 'Published successfully' });
     }
     catch (error) {
         console.error(`[WebContent] Error in publish operation for user: ${(_b = req.user) === null || _b === void 0 ? void 0 : _b._id}`, {
@@ -175,7 +178,7 @@ const publishWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functi
             stack: error.stack
         });
         if (error.name === 'ValidationError') {
-            return res.status(400).json({
+            res.status(400).json({
                 message: 'Validation error',
                 error: error.errors,
                 details: Object.keys(error.errors).map(key => ({
@@ -183,8 +186,9 @@ const publishWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functi
                     message: error.errors[key].message
                 }))
             });
+            return;
         }
-        return res.status(500).json({
+        res.status(500).json({
             message: 'Internal server error',
             error: error.message
         });
@@ -195,14 +199,16 @@ const updateWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functio
     var _a;
     try {
         if (!req.user) {
-            return res.status(401).json({ message: 'Authentication required' });
+            res.status(401).json({ message: 'Authentication required' });
+            return;
         }
         console.log(`[WebContent] Starting update operation for user: ${req.user._id}`);
         const userId = req.user._id;
         const contentData = req.body;
         if (!userId) {
             console.error(`[WebContent] Invalid user ID in update operation`);
-            return res.status(400).json({ message: 'Invalid user ID' });
+            res.status(400).json({ message: 'Invalid user ID' });
+            return;
         }
         console.log(`[WebContent] Content sections to update:`, {
             hasLanding: !!contentData.landing,
@@ -223,7 +229,8 @@ const updateWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functio
             !contentData.available &&
             !contentData.socialChannels) {
             console.log(`[WebContent] Missing content data for update - user: ${userId}`);
-            return res.status(400).json({ message: 'Missing content data' });
+            res.status(400).json({ message: 'Missing content data' });
+            return;
         }
         const [webContent, user] = yield Promise.all([
             WebContent_model_1.default.findOne({ user: userId }),
@@ -231,7 +238,8 @@ const updateWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functio
         ]);
         if (!webContent) {
             console.log(`[WebContent] No content found to update for user: ${userId}`);
-            return res.status(404).json({ message: 'No web content found to update' });
+            res.status(404).json({ message: 'No web content found to update' });
+            return;
         }
         if (webContent.contentHash) {
             try {
@@ -278,7 +286,7 @@ const updateWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functio
             }
         }
         console.log(`[WebContent] Successfully updated content for user: ${userId}`);
-        return res.status(200).json({
+        res.status(200).json({
             message: 'Content updated successfully',
             contentHash: webContent.contentHash
         });
@@ -290,7 +298,7 @@ const updateWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functio
             stack: error.stack
         });
         if (error.name === 'ValidationError') {
-            return res.status(400).json({
+            res.status(400).json({
                 message: 'Validation error',
                 error: error.errors,
                 details: Object.keys(error.errors).map(key => ({
@@ -298,8 +306,9 @@ const updateWebContent = (req, res) => __awaiter(void 0, void 0, void 0, functio
                     message: error.errors[key].message
                 }))
             });
+            return;
         }
-        return res.status(500).json({
+        res.status(500).json({
             message: 'Internal server error',
             error: error.message
         });

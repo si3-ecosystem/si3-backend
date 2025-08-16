@@ -48,11 +48,11 @@ router.get('/render', (req, res) => {
         if (savedFileContent !== renderedTemplate)
             throw new Error('Save verification failed: The content on disk does not match the rendered content.');
         console.log('[Render Route] File save verified successfully.');
-        return res.status(200).json({ message: 'Template rendered and saved successfully', filename, path: filePath });
+        res.status(200).json({ message: 'Template rendered and saved successfully', filename, path: filePath });
     }
     catch (error) {
         console.error('Error in /render route:', error);
-        return res.status(500).json({ message: 'Internal server error', error: error.message });
+        res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 });
 exports.default = router;

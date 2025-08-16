@@ -27,41 +27,47 @@ const publishDomain = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     var _a, _b;
     try {
         if (!req.user) {
-            return errorResponse(res, 401, 'Authentication required');
+            errorResponse(res, 401, 'Authentication required');
+            return;
         }
         const { domain } = req.body;
         if (!domain) {
-            return errorResponse(res, 400, 'Domain is required.');
+            errorResponse(res, 400, 'Domain is required.');
+            return;
         }
         // Check if subdomain is already taken
         const existingUser = yield usersModel_1.default.findOne({ domain }).exec();
         if (existingUser) {
-            return errorResponse(res, 400, 'Subdomain already registered.');
+            errorResponse(res, 400, 'Subdomain already registered.');
+            return;
         }
         // Ensure content is published
         const webpage = yield WebContent_model_1.default.findOne({ user: req.user._id }).exec();
         const cid = (_a = webpage === null || webpage === void 0 ? void 0 : webpage.contentHash) !== null && _a !== void 0 ? _a : '';
         if (!cid) {
             console.log('[publishDomain] No content hash found for user:', req.user._id);
-            return errorResponse(res, 400, 'Before selecting your domain name, please publish your webpage first.');
+            errorResponse(res, 400, 'Before selecting your domain name, please publish your webpage first.');
+            return;
         }
         // Register subdomain on external service
         const success = yield (0, exports.registerSubdomain)(domain, cid);
         if (!success) {
-            return errorResponse(res, 400, 'Could not register subdomain.');
+            errorResponse(res, 400, 'Could not register subdomain.');
+            return;
         }
         // Update user record
         const updatedUser = yield usersModel_1.default.findByIdAndUpdate(req.user._id, { domain }, { new: true }).exec();
         if (!updatedUser) {
-            return errorResponse(res, 404, 'User not found.');
+            errorResponse(res, 404, 'User not found.');
+            return;
         }
-        return res
+        res
             .status(200)
             .json({ domain: `${updatedUser.domain}.siher.eth.link` });
     }
     catch (error) {
         console.error('[publishDomain] Error:', error);
-        return errorResponse(res, 500, (_b = error.message) !== null && _b !== void 0 ? _b : 'Failed to publish domain');
+        errorResponse(res, 500, (_b = error.message) !== null && _b !== void 0 ? _b : 'Failed to publish domain');
     }
 });
 exports.publishDomain = publishDomain;
