@@ -6,6 +6,7 @@ const allowedOrigins = [
     'http://localhost:3001',
     'http://127.0.0.1:5500',
     'http://127.0.0.1:5500/temp/Kara-Howard.html',
+    'http://127.0.0.1:5500/index.html',
     'https://siher.si3.space',
     'https://backend.si3.space'
 ];
