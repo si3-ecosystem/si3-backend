@@ -3,11 +3,12 @@ import multer from "multer";
 import { uploadToPinata } from "../controllers/pinataController";
 
 const router = express.Router();
+
+// Use memory storage instead of disk storage
 const upload = multer({ 
-  dest: "uploads/",
+  storage: multer.memoryStorage(), // Files stored in memory as Buffer
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    // Only allow image files
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
@@ -16,6 +17,7 @@ const upload = multer({
   }
 });
 
+// @ts-ignore
 router.post("/upload", upload.single("image"), uploadToPinata);
 
 export default router;
