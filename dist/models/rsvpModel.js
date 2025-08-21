@@ -256,8 +256,31 @@ rsvpSchema.statics.getNextWaitlistPosition = function (eventId) {
 };
 // Error handling for duplicate RSVP
 rsvpSchema.post("save", function (error, doc, next) {
+    var _a, _b;
     if (error.name === "MongoServerError" && error.code === 11000) {
-        next(new Error("User has already RSVP'd for this event"));
+        console.log(`🚨 [RSVP MODEL DEBUG] MongoDB duplicate key error caught in post-save hook`);
+        console.log(`   Error details:`, {
+            name: error.name,
+            code: error.code,
+            message: error.message,
+            keyPattern: error.keyPattern,
+            keyValue: error.keyValue
+        });
+        console.log(`   Document being saved:`, {
+            eventId: doc === null || doc === void 0 ? void 0 : doc.eventId,
+            userId: doc === null || doc === void 0 ? void 0 : doc.userId,
+            status: doc === null || doc === void 0 ? void 0 : doc.status,
+            id: doc === null || doc === void 0 ? void 0 : doc._id
+        });
+        // Check if it's the eventId+userId constraint (actual duplicate RSVP)
+        if (((_a = error.keyPattern) === null || _a === void 0 ? void 0 : _a.eventId) && ((_b = error.keyPattern) === null || _b === void 0 ? void 0 : _b.userId)) {
+            next(new Error("User has already RSVP'd for this event"));
+        }
+        else {
+            // For other duplicate key errors, provide more specific message
+            const field = Object.keys(error.keyPattern || {})[0] || 'unknown field';
+            next(new Error(`Duplicate value for ${field}. Please try again.`));
+        }
     }
     else {
         next(error);

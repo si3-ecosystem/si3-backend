@@ -28,25 +28,61 @@ export const createRSVP = catchAsync(async (req: AuthenticatedRequest, res: Resp
   const { eventId, status, guestCount, dietaryRestrictions, specialRequests, contactInfo } = req.body;
   const userId = req.user?._id;
 
+  console.log(`\n🎫 [RSVP DEBUG] Starting RSVP creation process`);
+  console.log(`   User ID: ${userId}`);
+  console.log(`   User Email: ${req.user?.email}`);
+  console.log(`   Event ID: ${eventId}`);
+  console.log(`   Status: ${status}`);
+  console.log(`   Guest Count: ${guestCount}`);
+
   if (!userId) {
+    console.log(`❌ [RSVP DEBUG] No user ID found`);
     return next(new AppError("User authentication required", 401));
   }
 
   // Validate user has a real email address (not wallet temp email)
   const userEmail = req.user?.email;
   if (!userEmail || userEmail.includes('@wallet.temp')) {
+    console.log(`❌ [RSVP DEBUG] Invalid email: ${userEmail}`);
     return next(new AppError("No valid email found for this user. Please update your email address to receive RSVP confirmations and event notifications.", 400));
   }
 
+  console.log(`✅ [RSVP DEBUG] User validation passed`);
+
   // Validate event and RSVP settings from Sanity
+  console.log(`🔍 [RSVP DEBUG] Validating event from Sanity...`);
   const event = await SanityEventService.validateEventForRSVP(eventId);
+  console.log(`✅ [RSVP DEBUG] Event validation passed`);
 
   // Check if user already has an RSVP for this event
+  console.log(`🔍 [RSVP DEBUG] Checking for existing RSVP...`);
+  console.log(`   Query: { eventId: "${eventId}", userId: ObjectId("${userId}") }`);
+
   const existingRSVP = await RSVPModel.findOne({ eventId, userId });
 
+  console.log(`🔍 [RSVP DEBUG] Existing RSVP query result:`, {
+    found: !!existingRSVP,
+    rsvpId: existingRSVP?._id,
+    rsvpStatus: existingRSVP?.status,
+    rsvpEventId: existingRSVP?.eventId,
+    rsvpUserId: existingRSVP?.userId,
+    rsvpCreatedAt: existingRSVP?.createdAt
+  });
+
   if (existingRSVP) {
-    return next(new AppError("You have already RSVP'd for this event", 400));
+    console.log(`❌ [RSVP DEBUG] Found existing RSVP - blocking creation`);
+    console.log(`   Existing RSVP details:`, {
+      id: existingRSVP._id,
+      eventId: existingRSVP.eventId,
+      userId: existingRSVP.userId,
+      status: existingRSVP.status,
+      createdAt: existingRSVP.createdAt,
+      guestCount: existingRSVP.guestCount
+    });
+    return next(new AppError("User has already RSVP'd for this event", 400));
   }
+
+  console.log(`✅ [RSVP DEBUG] No existing RSVP found - proceeding with creation`);
 
   // Validate guest count with fallback for null values
   const maxGuestsPerRSVP = event.rsvpSettings?.maxGuestsPerRSVP || 5;
@@ -103,7 +139,36 @@ export const createRSVP = catchAsync(async (req: AuthenticatedRequest, res: Resp
     approvalStatus: event.rsvpSettings?.requiresApproval ? 'pending' : 'approved'
   };
 
+  console.log(`🚀 [RSVP DEBUG] About to create RSVP with data:`, {
+    eventId: rsvpData.eventId,
+    userId: rsvpData.userId,
+    status: rsvpData.status,
+    guestCount: rsvpData.guestCount,
+    approvalStatus: rsvpData.approvalStatus
+  });
+
+  // Double-check for existing RSVP right before creation
+  console.log(`🔍 [RSVP DEBUG] Final check for existing RSVP before creation...`);
+  const finalCheck = await RSVPModel.findOne({ eventId, userId });
+  console.log(`🔍 [RSVP DEBUG] Final check result:`, {
+    found: !!finalCheck,
+    rsvpId: finalCheck?._id,
+    rsvpStatus: finalCheck?.status
+  });
+
+  if (finalCheck) {
+    console.log(`❌ [RSVP DEBUG] RACE CONDITION DETECTED - RSVP was created between checks!`);
+    return next(new AppError("User has already RSVP'd for this event", 400));
+  }
+
+  console.log(`🚀 [RSVP DEBUG] Creating RSVP in database...`);
   const rsvp = await RSVPModel.create(rsvpData);
+  console.log(`✅ [RSVP DEBUG] RSVP created successfully:`, {
+    id: rsvp._id,
+    eventId: rsvp.eventId,
+    userId: rsvp.userId,
+    status: rsvp.status
+  });
   await rsvp.populate('user', 'email roles');
   const populatedRSVP = rsvp as unknown as PopulatedRSVP;
 
@@ -495,8 +560,22 @@ export const joinWaitlist = catchAsync(async (req: AuthenticatedRequest, res: Re
   }
 
   // Check if user already has an RSVP
+  console.log(`🔍 [WAITLIST DEBUG] Checking for existing RSVP...`);
+  console.log(`   Query: { eventId: "${eventId}", userId: ObjectId("${userId}") }`);
+
   const existingRSVP = await RSVPModel.findOne({ eventId, userId });
+
+  console.log(`🔍 [WAITLIST DEBUG] Existing RSVP query result:`, {
+    found: !!existingRSVP,
+    rsvpId: existingRSVP?._id,
+    rsvpStatus: existingRSVP?.status,
+    rsvpEventId: existingRSVP?.eventId,
+    rsvpUserId: existingRSVP?.userId,
+    rsvpCreatedAt: existingRSVP?.createdAt
+  });
+
   if (existingRSVP) {
+    console.log(`❌ [WAITLIST DEBUG] Found existing RSVP - blocking waitlist join`);
     return next(new AppError("You have already RSVP'd for this event", 400));
   }
 
@@ -787,7 +866,19 @@ export const debugCurrentUser = catchAsync(async (req: AuthenticatedRequest, res
     }
 
     // Get user's RSVPs for context
-    const userRSVPs = await RSVPModel.find({ userId }).sort({ createdAt: -1 }).limit(5);
+    const userRSVPs = await RSVPModel.find({ userId }).sort({ createdAt: -1 });
+
+    console.log(`🔍 [DEBUG] User RSVP check for user ${userId}:`);
+    console.log(`   Total RSVPs found: ${userRSVPs.length}`);
+    userRSVPs.forEach((rsvp, index) => {
+      console.log(`   RSVP ${index + 1}:`, {
+        id: rsvp._id,
+        eventId: rsvp.eventId,
+        status: rsvp.status,
+        guestCount: rsvp.guestCount,
+        createdAt: rsvp.createdAt
+      });
+    });
 
     const debugInfo = {
       user: {
@@ -800,13 +891,16 @@ export const debugCurrentUser = catchAsync(async (req: AuthenticatedRequest, res
         lastLogin: user.lastLogin,
         createdAt: user.createdAt
       },
-      recentRSVPs: userRSVPs.map(rsvp => ({
+      allRSVPs: userRSVPs.map(rsvp => ({
         id: rsvp._id,
         eventId: rsvp.eventId,
         status: rsvp.status,
+        guestCount: rsvp.guestCount,
         confirmationEmailSent: rsvp.confirmationEmailSent,
-        createdAt: rsvp.createdAt
+        createdAt: rsvp.createdAt,
+        updatedAt: rsvp.updatedAt
       })),
+      rsvpCount: userRSVPs.length,
       recommendations: [] as string[]
     };
 
