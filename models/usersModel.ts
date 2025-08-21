@@ -61,6 +61,7 @@ export interface IUser extends Document {
   personalValues: string[];
   companyAffiliation?: string;
   digitalLinks: IDigitalLink[];
+  profileImage?: string; // IPFS URL for profile image
 
   // New fields for settings page
   notificationSettings: INotificationSettings;
@@ -254,6 +255,20 @@ const userSchema = new Schema<IUser>(
     newsletter: {
       type: Boolean,
       default: false,
+    },
+
+    profileImage: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function (url: string) {
+          if (!url) return true; // Optional field
+          // Validate IPFS URL format
+          return /^https:\/\/gateway\.pinata\.cloud\/ipfs\/[a-zA-Z0-9]+$/.test(url) ||
+                 /^https:\/\/[a-zA-Z0-9.-]+\.ipfs\.[a-zA-Z0-9.-]+\/[a-zA-Z0-9]+$/.test(url);
+        },
+        message: "Profile image must be a valid IPFS URL",
+      },
     },
 
     // New fields for settings page

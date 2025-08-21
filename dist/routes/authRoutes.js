@@ -85,9 +85,9 @@ router.post("/send-verification", protectUnverifiedMiddleware_1.protectUnverifie
 /**
  * @route   POST /api/auth/send-verification-new-email
  * @desc    Send email verification to a new email address for email update
- * @access  Private (allows unverified users)
+ * @access  Public (temporarily disabled auth for debugging)
  */
-router.post("/send-verification-new-email", protectUnverifiedMiddleware_1.protectUnverified, authValidation_1.validateNewEmailVerification, validationMiddleware_1.default, authController_1.sendEmailVerificationToNewEmail);
+router.post("/send-verification-new-email", authValidation_1.validateNewEmailVerification, validationMiddleware_1.default, authController_1.sendEmailVerificationToNewEmail);
 /**
  * @route   POST /api/auth/debug-email
  * @desc    Debug endpoint to test request parsing

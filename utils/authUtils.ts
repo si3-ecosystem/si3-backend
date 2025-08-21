@@ -108,6 +108,7 @@ class AuthUtils {
       wallet_address: user.wallet_address,
       personalValues: user.personalValues,
       companyAffiliation: user.companyAffiliation,
+      profileImage: user.profileImage,
       // New fields for settings page
       notificationSettings: user.notificationSettings,
       walletInfo: user.walletInfo,

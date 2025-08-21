@@ -685,6 +685,7 @@ export const getMe = catchAsync(
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      profileImage: user.profileImage,
       // New fields for settings page
       notificationSettings: user.notificationSettings,
       walletInfo: user.walletInfo,
@@ -718,6 +719,7 @@ export const updateProfile = catchAsync(
       "details",
       "newsletter",
       "roles",
+      "profileImage",
     ];
 
     // Filter out fields that are not allowed to be updated
@@ -870,6 +872,7 @@ export const checkAuth = catchAsync(
             email: user.email,
             roles: user.roles,
             isVerified: user.isVerified,
+            profileImage: user.profileImage,
           },
         },
       });

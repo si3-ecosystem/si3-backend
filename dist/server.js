@@ -21,6 +21,8 @@ const emailRoutes_1 = __importDefault(require("./routes/emailRoutes"));
 const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
 const rsvpRoutes_1 = __importDefault(require("./routes/rsvpRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
+const webhookRoutes_1 = __importDefault(require("./routes/webhookRoutes"));
+const pinataRoutes_1 = __importDefault(require("./routes/pinataRoutes"));
 const redis_1 = __importDefault(require("./config/redis"));
 const db_1 = require("./config/db");
 const redisHelper_1 = __importDefault(require("./helpers/redisHelper"));
@@ -60,6 +62,10 @@ app.get("/health", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         services: {
             redis: redisStatus ? "connected" : "disconnected",
             mongodb: dbStatus.isConnected ? "connected" : "disconnected",
+            webhook: {
+                configured: !!(process.env.LOCK_ADDRESS && process.env.WEBHOOK_URL),
+                hasPrivateKey: !!process.env.UNLOCK_PRIVATE_KEY,
+            },
         },
         cookieDomain: process.env.COOKIE_DOMAIN,
         production: process.env.NODE_ENV === "production",
@@ -70,6 +76,26 @@ app.use("/api/email", emailRoutes_1.default);
 app.use("/api/comments", commentRoutes_1.default);
 app.use("/api/rsvp", rsvpRoutes_1.default);
 app.use("/api/user", userRoutes_1.default);
+app.use("/api/webhooks", webhookRoutes_1.default);
+app.use("/api/pinata", pinataRoutes_1.default);
+app.get("/api/system/status", (req, res) => {
+    const memUsage = process.memoryUsage();
+    res.json({
+        status: "running",
+        platform: "akash",
+        uptime: process.uptime(),
+        memory: {
+            used: Math.round(memUsage.heapUsed / 1024 / 1024) + " MB",
+            total: Math.round(memUsage.heapTotal / 1024 / 1024) + " MB",
+            external: Math.round(memUsage.external / 1024 / 1024) + " MB",
+        },
+        webhook: {
+            configured: !!(process.env.LOCK_ADDRESS && process.env.WEBHOOK_URL),
+            url: process.env.WEBHOOK_URL,
+        },
+        timestamp: new Date().toISOString(),
+    });
+});
 // Handle 404 errors
 app.use(errorController_1.notFoundHandler);
 // Global error handler
@@ -84,6 +110,36 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
             console.log(`📱 Environment: ${process.env.NODE_ENV || "development"}`);
             console.log(`🔗 Health: http://localhost:${PORT}/health`);
         });
+        // Wait for server to be ready, then initialize webhook
+        // server.on("listening", async () => {
+        //     console.log(
+        //         "🔗 Server is listening, initializing webhook services..."
+        //     );
+        //     // Give server time to be fully ready
+        //     setTimeout(async () => {
+        //         try {
+        //             const { UnlockService } = await import(
+        //                 "./services/unlockService"
+        //             );
+        //             const unlockService = new UnlockService();
+        //             // Authenticate with Unlock Protocol
+        //             await unlockService.authenticateWithUnlock();
+        //             console.log("✅ Unlock authentication successful");
+        //             // Subscribe to webhooks if configuration is complete
+        //             if (process.env.LOCK_ADDRESS && process.env.WEBHOOK_URL) {
+        //                 await unlockService.subscribeToPurchases();
+        //                 console.log("✅ Webhook subscription initialized");
+        //             } else {
+        //                 console.log(
+        //                     "⚠️ Missing LOCK_ADDRESS or WEBHOOK_URL - webhook subscription skipped"
+        //                 );
+        //             }
+        //         } catch (error) {
+        //             console.error("❌ Webhook initialization failed:", error);
+        //             // Don't exit - continue running without webhook
+        //         }
+        //     }, 10000); // Wait 10 seconds for full startup
+        // });
         // Graceful shutdown
         const shutdown = (signal) => {
             console.log(`\n🛑 ${signal} received. Shutting down gracefully...`);

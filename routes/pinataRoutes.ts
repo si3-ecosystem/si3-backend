@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
-import { uploadToPinata } from "../controllers/pinataController";
+import { uploadToPinata, uploadProfileImage } from "../controllers/pinataController";
+import { protect } from "../middleware/protectMiddleware";
 
 const router = express.Router();
 
@@ -19,5 +20,8 @@ const upload = multer({
 
 // @ts-ignore
 router.post("/upload", upload.single("image"), uploadToPinata);
+
+// @ts-ignore
+router.post("/upload-profile-image", protect, upload.single("image"), uploadProfileImage);
 
 export default router;

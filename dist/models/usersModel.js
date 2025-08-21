@@ -219,6 +219,20 @@ const userSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    profileImage: {
+        type: String,
+        trim: true,
+        validate: {
+            validator: function (url) {
+                if (!url)
+                    return true; // Optional field
+                // Validate IPFS URL format
+                return /^https:\/\/gateway\.pinata\.cloud\/ipfs\/[a-zA-Z0-9]+$/.test(url) ||
+                    /^https:\/\/[a-zA-Z0-9.-]+\.ipfs\.[a-zA-Z0-9.-]+\/[a-zA-Z0-9]+$/.test(url);
+            },
+            message: "Profile image must be a valid IPFS URL",
+        },
+    },
     // New fields for settings page
     notificationSettings: {
         emailUpdates: {
