@@ -236,21 +236,18 @@ const si3RSVPConfirmationTemplate = (data) => {
                     <!-- Single Event Details Section -->
                     <div class="section">
                         <h3 class="section-title">
-                            <span>📅</span>
                             Event Details
                         </h3>
 
                         <!-- Event Information -->
                         <div class="detail-grid">
                             <div class="detail-item">
-                                <div class="detail-icon">🎯</div>
                                 <div class="detail-content">
                                     <div class="detail-label">Event</div>
                                     <div class="detail-value">${event.title}</div>
                                 </div>
                             </div>
                             <div class="detail-item">
-                                <div class="detail-icon">📅</div>
                                 <div class="detail-content">
                                     <div class="detail-label">Date & Time</div>
                                     <div class="detail-value">${new Date(event.eventDate).toLocaleDateString('en-US', {
@@ -267,7 +264,6 @@ const si3RSVPConfirmationTemplate = (data) => {
                             </div>
                             ${event.location ? `
                             <div class="detail-item">
-                                <div class="detail-icon">${event.location.type === 'virtual' ? '🌐' : '📍'}</div>
                                 <div class="detail-content">
                                     <div class="detail-label">Location</div>
                                     <div class="detail-value">
@@ -278,7 +274,6 @@ const si3RSVPConfirmationTemplate = (data) => {
                             </div>
                             ` : ''}
                             <div class="detail-item">
-                                <div class="detail-icon">👥</div>
                                 <div class="detail-content">
                                     <div class="detail-label">Attendees</div>
                                     <div class="detail-value">${rsvp.guestCount} ${rsvp.guestCount === 1 ? 'person' : 'people'}</div>
@@ -286,7 +281,6 @@ const si3RSVPConfirmationTemplate = (data) => {
                             </div>
                             ${rsvp.dietaryRestrictions ? `
                             <div class="detail-item">
-                                <div class="detail-icon">🍽️</div>
                                 <div class="detail-content">
                                     <div class="detail-label">Dietary Requirements</div>
                                     <div class="detail-value">${rsvp.dietaryRestrictions}</div>
@@ -299,7 +293,6 @@ const si3RSVPConfirmationTemplate = (data) => {
                         <!-- Special Message -->
                         <div style="margin-top: 24px; padding: 16px; background: #FEF3C7; border-radius: 8px; border-left: 4px solid #F59E0B;">
                             <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                <span style="font-size: 16px;">💬</span>
                                 <div>
                                     <div style="font-weight: 600; color: #92400E; font-size: 14px; margin-bottom: 4px;">SPECIAL MESSAGE</div>
                                     <div style="color: #92400E; font-size: 15px; line-height: 1.5;">${customMessage}</div>
@@ -312,7 +305,6 @@ const si3RSVPConfirmationTemplate = (data) => {
                         <!-- Add to Calendar -->
                         <div style="margin-top: 32px; padding: 24px; background: linear-gradient(135deg, #EBF8FF 0%, #DBEAFE 100%); border-radius: 12px; border: 1px solid #BFDBFE; text-align: center;">
                             <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px;">
-                                <span style="font-size: 20px;">📅</span>
                                 <h4 style="margin: 0; color: #1E40AF; font-size: 18px; font-weight: 700;">Add to Your Calendar</h4>
                             </div>
 

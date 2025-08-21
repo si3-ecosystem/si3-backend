@@ -216,10 +216,14 @@ exports.createRSVP = (0, catchAsync_1.default)((req, res, next) => __awaiter(voi
  * @access  Private
  */
 exports.getUserRSVPs = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
     const { page = 1, limit = 10, status } = req.query;
+    console.log(`\n📋 [GET RSVPS DEBUG] Starting getUserRSVPs`);
+    console.log(`   User ID: ${userId}`);
+    console.log(`   Query params: page=${page}, limit=${limit}, status=${status}`);
     if (!userId) {
+        console.log(`❌ [GET RSVPS DEBUG] No user ID found`);
         return next(new AppError_1.default("User authentication required", 401));
     }
     // Build query
@@ -227,16 +231,22 @@ exports.getUserRSVPs = (0, catchAsync_1.default)((req, res, next) => __awaiter(v
     if (status) {
         query.status = status;
     }
+    console.log(`🔍 [GET RSVPS DEBUG] MongoDB query:`, query);
     // Check cache first
     const cacheKey = `user_rsvps_${userId}_${page}_${limit}_${status || 'all'}`;
+    console.log(`🔍 [GET RSVPS DEBUG] Cache key: ${cacheKey}`);
     const cachedRSVPs = yield redisHelper_1.default.cacheGet(cacheKey);
     if (cachedRSVPs) {
+        console.log(`✅ [GET RSVPS DEBUG] Found cached result with ${((_b = cachedRSVPs.rsvps) === null || _b === void 0 ? void 0 : _b.length) || 0} RSVPs`);
         return res.status(200).json({
             status: "success",
             data: cachedRSVPs
         });
     }
+    console.log(`🔍 [GET RSVPS DEBUG] No cache found, querying database...`);
     const skip = (Number(page) - 1) * Number(limit);
+    console.log(`🔍 [GET RSVPS DEBUG] Executing database queries...`);
+    console.log(`   Skip: ${skip}, Limit: ${Number(limit)}`);
     const [rsvps, total] = yield Promise.all([
         rsvpModel_1.default.find(query)
             .populate('user', 'email roles')
@@ -245,6 +255,18 @@ exports.getUserRSVPs = (0, catchAsync_1.default)((req, res, next) => __awaiter(v
             .limit(Number(limit)),
         rsvpModel_1.default.countDocuments(query)
     ]);
+    console.log(`📊 [GET RSVPS DEBUG] Database results:`);
+    console.log(`   Total count: ${total}`);
+    console.log(`   RSVPs returned: ${rsvps.length}`);
+    if (rsvps.length > 0) {
+        console.log(`   First RSVP:`, {
+            id: rsvps[0]._id,
+            eventId: rsvps[0].eventId,
+            userId: rsvps[0].userId,
+            status: rsvps[0].status,
+            createdAt: rsvps[0].createdAt
+        });
+    }
     const result = {
         rsvps,
         pagination: {
@@ -255,8 +277,10 @@ exports.getUserRSVPs = (0, catchAsync_1.default)((req, res, next) => __awaiter(v
             hasPrev: Number(page) > 1
         }
     };
+    console.log(`💾 [GET RSVPS DEBUG] Caching result for 5 minutes`);
     // Cache for 5 minutes
     yield redisHelper_1.default.cacheSet(cacheKey, result, 300);
+    console.log(`✅ [GET RSVPS DEBUG] Sending response with ${result.rsvps.length} RSVPs`);
     res.status(200).json({
         status: "success",
         data: result
