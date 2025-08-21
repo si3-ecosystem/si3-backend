@@ -60,7 +60,7 @@ const NONCE_KEY_PREFIX = "auth:nonce:";
 const RATE_LIMIT_KEY_PREFIX = "auth:rate_limit:";
 const OTP_TTL_SECONDS = parseInt(process.env.OTP_TTL_SECONDS || "600", 10); // 10 minutes
 const NONCE_TTL_SECONDS = parseInt(process.env.NONCE_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SECONDS = parseInt(process.env.RATE_LIMIT_SECONDS || "0", 10); // Disabled by default, can be enabled via env var
+const RATE_LIMIT_SECONDS = 0; // Force disabled for debugging - was: parseInt(process.env.RATE_LIMIT_SECONDS || "0", 10);
 /**
  * Send OTP to email for passwordless login
  */
@@ -415,7 +415,8 @@ exports.sendEmailVerification = (0, catchAsync_1.default)((req, res, next) => __
  */
 exports.sendEmailVerificationToNewEmail = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { email: newEmail } = req.body;
-    const user = req.user;
+    // Temporarily disabled user authentication for debugging
+    // const user = req.user as IUser;
     if (!newEmail) {
         return next(new AppError_1.default("Email is required", 400));
     }
@@ -425,12 +426,12 @@ exports.sendEmailVerificationToNewEmail = (0, catchAsync_1.default)((req, res, n
     if (newEmail.includes('@wallet.temp')) {
         return next(new AppError_1.default("Wallet temporary emails are not allowed", 400));
     }
+    // Check if user with this email already exists
     const existingUser = yield usersModel_1.default.findOne({
-        email: newEmail,
-        _id: { $ne: user._id }
+        email: newEmail
     });
     if (existingUser) {
-        return next(new AppError_1.default("This email address is already in use by another account", 400));
+        return next(new AppError_1.default("User already exists with this email address", 400));
     }
     // Rate limiting disabled for new email verification
     // Generate OTP
