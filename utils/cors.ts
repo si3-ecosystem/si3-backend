@@ -6,7 +6,8 @@ const allowedOrigins: string[] = [
   'http://127.0.0.1:5500',
   'http://127.0.0.1:5500/temp/Kara-Howard.html',
   'https://siher.si3.space',
-  'https://backend.si3.space'
+  'https://backend.si3.space',
+  'https://app.si3.space',
 ]
 
 const allowedDomainSuffixes: string[] = ['.siher.eth.link', '.siher.eth.limo']
