@@ -79,12 +79,18 @@ class EncryptionService {
     verifyToken(token) {
         try {
             const jwtSecret = process.env.JWT_SECRET;
+            console.log('[encryption] JWT_SECRET available:', !!jwtSecret);
+            console.log('[encryption] Token length:', token === null || token === void 0 ? void 0 : token.length);
             if (!jwtSecret) {
+                console.log('[encryption] JWT_SECRET not found in environment');
                 throw new Error("JWT_SECRET environment variable is not set");
             }
-            return jsonwebtoken_1.default.verify(token, jwtSecret);
+            const result = jsonwebtoken_1.default.verify(token, jwtSecret);
+            console.log('[encryption] Token verification successful');
+            return result;
         }
         catch (error) {
+            console.log('[encryption] Token verification error:', error instanceof Error ? error.message : 'Unknown error');
             if (error instanceof jsonwebtoken_1.default.TokenExpiredError) {
                 throw new Error("Token has expired");
             }

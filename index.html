@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinata IPFS Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .upload-form {
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        
+        input[type="file"]:hover {
+            border-color: #007bff;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .progress {
+            margin: 20px 0;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .image-preview {
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .image-preview img {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .upload-info {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            color: #0d47a1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .copy-button {
+            background-color: #28a745;
+            font-size: 12px;
+            padding: 5px 10px;
+            margin-left: 10px;
+        }
+        
+        .copy-button:hover {
+            background-color: #218838;
+        }
+        
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        
+        .url-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Pinata IPFS Upload Test</h1>
+        
+        <div class="upload-info">
+            <strong>Instructions:</strong>
+            <ul>
+                <li>Select an image file (JPG, PNG, GIF, etc.)</li>
+                <li>Click "Upload to IPFS" to test your endpoint</li>
+                <li>The file will be uploaded to Pinata and you'll get an IPFS URL</li>
+                <li>Make sure your server is running on the correct port</li>
+            </ul>
+        </div>
+        
+        <form class="upload-form" id="uploadForm">
+            <div class="form-group">
+                <label for="imageFile">Select Image File:</label>
+                <input type="file" id="imageFile" name="image" accept="image/*" required>
+            </div>
+            
+            <button type="submit" id="uploadBtn">Upload to IPFS</button>
+        </form>
+        
+        <div class="progress" id="progressContainer">
+            <div class="progress-bar" id="progressBar">Uploading...</div>
+        </div>
+        
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('imageFile');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const result = document.getElementById('result');
+        
+        // Change this to your server's URL and port
+        const SERVER_URL = 'http://localhost:8080'; // Adjust port as needed
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const file = fileInput.files[0];
+            if (!file) {
+                showError('Please select a file');
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                showError('Please select an image file');
+                return;
+            }
+            
+            // Validate file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                showError('File size must be less than 5MB');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading...';
+                progressContainer.style.display = 'block';
+                result.style.display = 'none';
+                
+                // Simulate progress (since we can't get real progress easily with fetch)
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 30;
+                    if (progress > 90) progress = 90;
+                    progressBar.style.width = progress + '%';
+                }, 200);
+                
+                const response = await fetch(`${SERVER_URL}/api/pinata/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(data);
+                } else {
+                    showError(data.error || 'Upload failed');
+                }
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showError('Network error: ' + error.message);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload to IPFS';
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }, 1000);
+            }
+        });
+        
+        function showSuccess(data) {
+            result.className = 'result success';
+            result.innerHTML = `
+                <h3>✅ Upload Successful!</h3>
+                <div class="url-container">
+                    <strong>IPFS URL:</strong>
+                    <code>${data.url}</code>
+                    <button class="copy-button" onclick="copyToClipboard('${data.url}')">Copy</button>
+                </div>
+                ${data.ipfsHash ? `
+                <div class="url-container">
+                    <strong>IPFS Hash:</strong>
+                    <code>${data.ipfsHash}</code>
+                    <button class="copy-button" onclick="copyToClipboard('${data.ipfsHash}')">Copy</button>
+                </div>
+                ` : ''}
+                ${data.originalName ? `<p><strong>Original Name:</strong> ${data.originalName}</p>` : ''}
+                <div class="image-preview">
+                    <p><strong>Preview:</strong></p>
+                    <img src="${data.url}" alt="Uploaded image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                    <div style="display:none; color: #666; font-style: italic;">Image preview not available</div>
+                </div>
+            `;
+            result.style.display = 'block';
+        }
+        
+        function showError(message) {
+            result.className = 'result error';
+            result.innerHTML = `
+                <h3>❌ Upload Failed</h3>
+                <p>${message}</p>
+                <p><strong>Troubleshooting:</strong></p>
+                <ul>
+                    <li>Make sure your server is running</li>
+                    <li>Check if the server URL (${SERVER_URL}) is correct</li>
+                    <li>Verify your Pinata JWT token is set</li>
+                    <li>Check browser console for more details</li>
+                </ul>
+            `;
+            result.style.display = 'block';
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show temporary feedback
+                event.target.textContent = 'Copied!';
+                setTimeout(() => {
+                    event.target.textContent = 'Copy';
+                }, 1000);
+            }).catch(err => {
+                console.error('Could not copy text: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                event.target.textContent = 'Copied!';
+                setTimeout(() => {
+                    event.target.textContent = 'Copy';
+                }, 1000);
+            });
+        }
+        
+        // Show file info when selected
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                console.log('Selected file:', {
+                    name: file.name,
+                    size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+                    type: file.type
+                });
+            }
+        });
+    </script>
+</body>
+</html>

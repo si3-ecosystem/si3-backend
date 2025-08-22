@@ -22,26 +22,40 @@ const catchAsync_1 = __importDefault(require("../utils/catchAsync"));
  * Used for verification endpoints where unverified users need access
  */
 exports.protectUnverified = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    // Debug logging
+    console.log('[protectUnverified] Headers:', {
+        authorization: req.headers.authorization,
+        cookie: req.headers.cookie,
+        'user-agent': req.headers['user-agent']
+    });
+    console.log('[protectUnverified] Cookies:', req.cookies);
     // 1) Getting token and check if it's there
     let token = null;
     // Check Authorization header
     if (req.headers.authorization &&
         req.headers.authorization.startsWith("Bearer")) {
         token = req.headers.authorization.split(" ")[1];
+        console.log('[protectUnverified] Token from Authorization header:', token ? 'Found' : 'Not found');
     }
     // Check cookies
     if (!token && req.cookies) {
         token = authUtils_1.default.extractToken(req.headers.authorization, req.cookies);
+        console.log('[protectUnverified] Token from cookies:', token ? 'Found' : 'Not found');
     }
+    console.log('[protectUnverified] Final token status:', token ? 'Token available' : 'No token found');
     if (!token) {
+        console.log('[protectUnverified] No token found, returning 401');
         return next(AppError_1.default.unauthorized("You are not logged in! Please log in to get access."));
     }
     // 2) Verification token
     let decoded;
     try {
+        console.log('[protectUnverified] Attempting to verify token...');
         decoded = authUtils_1.default.verifyToken(token);
+        console.log('[protectUnverified] Token verified successfully for user:', decoded._id);
     }
     catch (error) {
+        console.log('[protectUnverified] Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
         return next(AppError_1.default.unauthorized("Invalid token. Please log in again!"));
     }
     // 3) Check if user still exists

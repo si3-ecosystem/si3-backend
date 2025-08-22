@@ -57,9 +57,11 @@ export interface IUser extends Document {
   interests: string[];
   companyName?: string;
   wallet_address?: string;
+  domain?: string;
   personalValues: string[];
   companyAffiliation?: string;
   digitalLinks: IDigitalLink[];
+  profileImage?: string; // IPFS URL for profile image
 
   // New fields for settings page
   notificationSettings: INotificationSettings;
@@ -167,6 +169,19 @@ const userSchema = new Schema<IUser>(
       },
     },
 
+    domain: {
+      type: String,
+      trim: true,
+      maxlength: [100, "Domain cannot exceed 100 characters"],
+      validate: {
+        validator: function (domain: string) {
+          if (!domain) return true; // Optional field
+          return /^[a-zA-Z0-9-]+$/.test(domain);
+        },
+        message: "Domain can only contain letters, numbers, and hyphens",
+      },
+    },
+
     roles: {
       type: [String],
       required: [true, "At least one role is required"],
@@ -242,6 +257,20 @@ const userSchema = new Schema<IUser>(
       default: false,
     },
 
+    profileImage: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function (url: string) {
+          if (!url) return true; // Optional field
+          // Validate IPFS URL format
+          return /^https:\/\/gateway\.pinata\.cloud\/ipfs\/[a-zA-Z0-9]+$/.test(url) ||
+                 /^https:\/\/[a-zA-Z0-9.-]+\.ipfs\.[a-zA-Z0-9.-]+\/[a-zA-Z0-9]+$/.test(url);
+        },
+        message: "Profile image must be a valid IPFS URL",
+      },
+    },
+
     // New fields for settings page
     notificationSettings: {
       emailUpdates: {
@@ -310,6 +339,7 @@ const userSchema = new Schema<IUser>(
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ roles: 1 });
 userSchema.index({ wallet_address: 1 }, { sparse: true });
+userSchema.index({ domain: 1 }, { sparse: true });
 userSchema.index({ isVerified: 1, createdAt: -1 });
 userSchema.index({ isWalletVerified: 1, createdAt: -1 });
 userSchema.index({ lastLogin: -1 });
