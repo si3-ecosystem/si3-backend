@@ -119,37 +119,99 @@ exports.verifyEmailOTP = (0, catchAsync_1.default)((req, res, next) => __awaiter
     }
     // Clear OTP from Redis
     yield redisHelper_1.default.cacheDelete(otpKey);
-    // Find existing user (don't create new ones via OTP login)
-    const user = yield usersModel_1.default.findOne({ email });
+    // Find existing user or create new one
+    let user = yield usersModel_1.default.findOne({ email });
+    let isNewUser = false;
     if (!user) {
-        // For OTP login, we should only allow existing users
-        // New users should register through proper registration flow
-        return next(AppError_1.default.badRequest("No account found with this email address. Please register first or use the correct email."));
+        // Create new user account
+        console.log(`[EMAIL AUTH DEBUG] Creating new user for email: ${email}`);
+        try {
+            user = new usersModel_1.default({
+                email,
+                isVerified: true, // Email is verified by OTP
+                roles: [usersModel_1.UserRole.SCHOLAR], // Default role for new users
+                lastLogin: new Date(),
+                newsletter: false, // Default newsletter preference
+                interests: [], // Empty interests array
+                personalValues: [], // Empty personal values array
+                digitalLinks: [], // Empty digital links array
+            });
+            yield user.save();
+            isNewUser = true;
+            console.log(`[EMAIL AUTH DEBUG] New user created:`, {
+                id: user._id,
+                email: user.email,
+                isVerified: user.isVerified
+            });
+        }
+        catch (error) {
+            console.log(`[EMAIL AUTH DEBUG] Error creating user:`, error.message);
+            // If there's a duplicate key error, try to find the existing user
+            if (error.code === 11000) {
+                console.log(`[EMAIL AUTH DEBUG] Duplicate key error, finding existing user`);
+                user = yield usersModel_1.default.findOne({ email });
+                if (user) {
+                    console.log(`[EMAIL AUTH DEBUG] Found existing user after duplicate error:`, {
+                        id: user._id,
+                        email: user.email
+                    });
+                    // Update existing user
+                    user.isVerified = true;
+                    user.lastLogin = new Date();
+                    yield user.save({ validateBeforeSave: false });
+                }
+                else {
+                    return next(AppError_1.default.conflict("Unable to create or find user account"));
+                }
+            }
+            else {
+                return next(AppError_1.default.internalServerError(`Account creation failed: ${error.message}`));
+            }
+        }
     }
-    // Update existing user
-    user.isVerified = true;
-    user.lastLogin = new Date();
-    yield user.save({ validateBeforeSave: false });
-    // Send login alert
+    else {
+        // Update existing user
+        console.log(`[EMAIL AUTH DEBUG] Logging into existing user: ${email}`);
+        user.isVerified = true;
+        user.lastLogin = new Date();
+        yield user.save({ validateBeforeSave: false });
+    }
+    // Send appropriate email based on whether user is new or existing
     const loginTime = new Date().toISOString();
     const ip = req.headers["x-forwarded-for"] || "Unknown";
-    const loginHtml = (0, emailTemplates_1.loginAlertEmailTemplate)({
-        email,
-        time: loginTime,
-        location: "Unknown",
-        ipAddress: Array.isArray(ip) ? ip[0] : ip,
-    });
-    yield protonMail_1.default.sendEmail({
-        senderName: "SI U Security",
-        senderEmail: "guides@si3.space",
-        toName: email,
-        toEmail: email,
-        subject: "New Login Detected",
-        htmlContent: loginHtml,
-        emailType: "rsvp",
-    });
+    if (isNewUser) {
+        // Send welcome email for new users
+        const welcomeHtml = (0, emailTemplates_1.welcomeEmailTemplate)();
+        yield protonMail_1.default.sendEmail({
+            senderName: "SI U Team",
+            senderEmail: "guides@si3.space",
+            toName: email,
+            toEmail: email,
+            subject: "Welcome to SI U!",
+            htmlContent: welcomeHtml,
+            emailType: "rsvp",
+        });
+    }
+    else {
+        // Send login alert for existing users
+        const loginHtml = (0, emailTemplates_1.loginAlertEmailTemplate)({
+            email,
+            time: loginTime,
+            location: "Unknown",
+            ipAddress: Array.isArray(ip) ? ip[0] : ip,
+        });
+        yield protonMail_1.default.sendEmail({
+            senderName: "SI U Security",
+            senderEmail: "guides@si3.space",
+            toName: email,
+            toEmail: email,
+            subject: "New Login Detected",
+            htmlContent: loginHtml,
+            emailType: "rsvp",
+        });
+    }
     // Finally generate and send token
-    authUtils_1.default.createSendToken(user, 200, res, "Login successful");
+    authUtils_1.default.createSendToken(user, 200, res, isNewUser ? "Account created successfully" : "Login successful");
 }));
 /**
  * Request wallet signature message

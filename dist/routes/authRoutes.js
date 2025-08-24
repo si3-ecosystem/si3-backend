@@ -18,7 +18,7 @@ const router = (0, express_1.Router)();
 router.post("/email/send-otp", authValidation_1.validateEmailOTP, validationMiddleware_1.default, authController_1.sendEmailOTP);
 /**
  * @route   POST /api/auth/email/verify-otp
- * @desc    Verify OTP and login/register user
+ * @desc    Verify OTP and login existing user or register new user
  * @access  Public
  */
 router.post("/email/verify-otp", authValidation_1.validateOTPVerification, validationMiddleware_1.default, authController_1.verifyEmailOTP);

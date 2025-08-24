@@ -105,49 +105,108 @@ export const verifyEmailOTP = catchAsync(
     // Clear OTP from Redis
     await redisHelper.cacheDelete(otpKey);
 
-    // Find existing user (don't create new ones via OTP login)
-    const user = await UserModel.findOne({ email });
+    // Find existing user or create new one
+    let user = await UserModel.findOne({ email });
+    let isNewUser = false;
 
     if (!user) {
-      // For OTP login, we should only allow existing users
-      // New users should register through proper registration flow
-      return next(AppError.badRequest(
-        "No account found with this email address. Please register first or use the correct email."
-      ));
+      // Create new user account
+      console.log(`[EMAIL AUTH DEBUG] Creating new user for email: ${email}`);
+      
+      try {
+        user = new UserModel({
+          email,
+          isVerified: true, // Email is verified by OTP
+          roles: [UserRole.SCHOLAR], // Default role for new users
+          lastLogin: new Date(),
+          newsletter: false, // Default newsletter preference
+          interests: [], // Empty interests array
+          personalValues: [], // Empty personal values array
+          digitalLinks: [], // Empty digital links array
+        });
+        await user.save();
+        isNewUser = true;
+
+        console.log(`[EMAIL AUTH DEBUG] New user created:`, {
+          id: user._id,
+          email: user.email,
+          isVerified: user.isVerified
+        });
+      } catch (error: any) {
+        console.log(`[EMAIL AUTH DEBUG] Error creating user:`, error.message);
+        
+        // If there's a duplicate key error, try to find the existing user
+        if (error.code === 11000) {
+          console.log(`[EMAIL AUTH DEBUG] Duplicate key error, finding existing user`);
+          user = await UserModel.findOne({ email });
+          
+          if (user) {
+            console.log(`[EMAIL AUTH DEBUG] Found existing user after duplicate error:`, {
+              id: user._id,
+              email: user.email
+            });
+            // Update existing user
+            user.isVerified = true;
+            user.lastLogin = new Date();
+            await user.save({ validateBeforeSave: false });
+          } else {
+            return next(AppError.conflict("Unable to create or find user account"));
+          }
+        } else {
+          return next(AppError.internalServerError(`Account creation failed: ${error.message}`));
+        }
+      }
+    } else {
+      // Update existing user
+      console.log(`[EMAIL AUTH DEBUG] Logging into existing user: ${email}`);
+      user.isVerified = true;
+      user.lastLogin = new Date();
+      await user.save({ validateBeforeSave: false });
     }
 
-    // Update existing user
-    user.isVerified = true;
-    user.lastLogin = new Date();
-    await user.save({ validateBeforeSave: false });
-
-    // Send login alert
+    // Send appropriate email based on whether user is new or existing
     const loginTime = new Date().toISOString();
     const ip = req.headers["x-forwarded-for"] || "Unknown";
 
-    const loginHtml = loginAlertEmailTemplate({
-      email,
-      time: loginTime,
-      location: "Unknown",
-      ipAddress: Array.isArray(ip) ? ip[0] : ip,
-    });
+    if (isNewUser) {
+      // Send welcome email for new users
+      const welcomeHtml = welcomeEmailTemplate();
+      
+      await emailService.sendEmail({
+        senderName: "SI U Team",
+        senderEmail: "guides@si3.space",
+        toName: email,
+        toEmail: email,
+        subject: "Welcome to SI U!",
+        htmlContent: welcomeHtml,
+        emailType: "rsvp",
+      });
+    } else {
+      // Send login alert for existing users
+      const loginHtml = loginAlertEmailTemplate({
+        email,
+        time: loginTime,
+        location: "Unknown",
+        ipAddress: Array.isArray(ip) ? ip[0] : ip,
+      });
 
-    await emailService.sendEmail({
-      senderName: "SI U Security",
-      senderEmail: "guides@si3.space",
-      toName: email,
-      toEmail: email,
-      subject: "New Login Detected",
-      htmlContent: loginHtml,
-      emailType: "rsvp",
-    });
+      await emailService.sendEmail({
+        senderName: "SI U Security",
+        senderEmail: "guides@si3.space",
+        toName: email,
+        toEmail: email,
+        subject: "New Login Detected",
+        htmlContent: loginHtml,
+        emailType: "rsvp",
+      });
+    }
 
     // Finally generate and send token
     authUtils.createSendToken(
       user,
       200,
       res,
-      "Login successful"
+      isNewUser ? "Account created successfully" : "Login successful"
     );
   }
 );
