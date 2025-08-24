@@ -50,7 +50,7 @@ router.post(
 
 /**
  * @route   POST /api/auth/email/verify-otp
- * @desc    Verify OTP and login/register user
+ * @desc    Verify OTP and login existing user or register new user
  * @access  Public
  */
 
