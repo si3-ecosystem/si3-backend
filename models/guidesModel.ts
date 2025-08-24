@@ -17,7 +17,7 @@ export interface IGuide extends Document {
   personalValues: string;
   socialHandles: ISocialHandles;
   howDidYouHear: string;
-  digitalLink: string;
+  digitalLink?: string;
 
   createdAt: Date;
   updatedAt: Date;
@@ -126,7 +126,6 @@ const guideSchema = new Schema<IGuide>(
 
     digitalLink: {
       type: String,
-      required: [true, "Digital link is required"],
       trim: true,
       validate: {
         validator: function (url: string) {
