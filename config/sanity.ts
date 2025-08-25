@@ -27,13 +27,15 @@ export const sanityClient = createClient(sanityConfig);
 // Helper functions for common event queries (using guidesSession)
 export class SanityEventService {
   /**
-   * Get event by ID (using guidesSession)
+   * Get event by ID (supporting both guidesSession and fixCards)
    */
   static async getEventById(eventId: string) {
     try {
-      const event = await sanityClient.fetch(`
+      // First try to find in guidesSession
+      let event = await sanityClient.fetch(`
         *[_type == "guidesSession" && _id == $eventId][0] {
           _id,
+          "eventType": "guidesSession",
           title,
           description,
           "eventDate": date,
@@ -53,6 +55,33 @@ export class SanityEventService {
           emailSettings
         }
       `, { eventId });
+
+      // If not found in guidesSession, try fixCards
+      if (!event) {
+        event = await sanityClient.fetch(`
+          *[_type == "fixCards" && _id == $eventId][0] {
+            _id,
+            "eventType": "fixCards",
+            title,
+            description,
+            "eventDate": date,
+            endDate,
+            guideName,
+            guideImage,
+            language,
+            partner->{
+              _id,
+              name
+            },
+            videoUrl,
+            featured,
+            location,
+            organizer,
+            rsvpSettings,
+            emailSettings
+          }
+        `, { eventId });
+      }
 
       return event;
     } catch (error) {
@@ -97,16 +126,18 @@ export class SanityEventService {
   }
 
   /**
-   * Get upcoming guide sessions with RSVP enabled
+   * Get upcoming events with RSVP enabled (supporting both guidesSession and fixCards)
    */
   static async getUpcomingEvents(limit: number = 10) {
     try {
-      const events = await sanityClient.fetch(`
+      // Get upcoming guidesSession events
+      const guideEvents = await sanityClient.fetch(`
         *[_type == "guidesSession" &&
           rsvpSettings.enabled == true &&
           date > now()
         ] | order(date asc) [0...$limit] {
           _id,
+          "eventType": "guidesSession",
           title,
           description,
           "eventDate": date,
@@ -126,7 +157,39 @@ export class SanityEventService {
         }
       `, { limit });
 
-      return events;
+      // Get upcoming fixCards events
+      const fixCardEvents = await sanityClient.fetch(`
+        *[_type == "fixCards" &&
+          rsvpSettings.enabled == true &&
+          date > now()
+        ] | order(date asc) [0...$limit] {
+          _id,
+          "eventType": "fixCards",
+          title,
+          description,
+          "eventDate": date,
+          endDate,
+          guideName,
+          guideImage,
+          language,
+          partner->{
+            _id,
+            name
+          },
+          videoUrl,
+          featured,
+          location,
+          organizer,
+          rsvpSettings
+        }
+      `, { limit });
+
+      // Combine and sort by date
+      const allEvents = [...guideEvents, ...fixCardEvents]
+        .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())
+        .slice(0, limit);
+
+      return allEvents;
     } catch (error) {
       console.error('Error fetching upcoming events:', error);
       throw new Error('Failed to fetch upcoming events');
@@ -134,13 +197,84 @@ export class SanityEventService {
   }
 
   /**
-   * Validate if guide session exists and RSVP is enabled
+   * Get previous events (supporting both guidesSession and fixCards)
+   */
+  static async getPreviousEvents(limit: number = 10) {
+    try {
+      // Get previous guidesSession events
+      const guideEvents = await sanityClient.fetch(`
+        *[_type == "guidesSession" &&
+          date < now()
+        ] | order(date desc) [0...$limit] {
+          _id,
+          "eventType": "guidesSession",
+          title,
+          description,
+          "eventDate": date,
+          endDate,
+          guideName,
+          guideImage,
+          language,
+          partner->{
+            _id,
+            name
+          },
+          videoUrl,
+          featured,
+          location,
+          organizer,
+          rsvpSettings
+        }
+      `, { limit });
+
+      // Get previous fixCards events
+      const fixCardEvents = await sanityClient.fetch(`
+        *[_type == "fixCards" &&
+          date < now()
+        ] | order(date desc) [0...$limit] {
+          _id,
+          "eventType": "fixCards",
+          title,
+          description,
+          "eventDate": date,
+          endDate,
+          guideName,
+          guideImage,
+          language,
+          partner->{
+            _id,
+            name
+          },
+          videoUrl,
+          featured,
+          location,
+          organizer,
+          rsvpSettings
+        }
+      `, { limit });
+
+      // Combine and sort by date (most recent first)
+      const allEvents = [...guideEvents, ...fixCardEvents]
+        .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
+        .slice(0, limit);
+
+      return allEvents;
+    } catch (error) {
+      console.error('Error fetching previous events:', error);
+      throw new Error('Failed to fetch previous events');
+    }
+  }
+
+  /**
+   * Validate if event exists and RSVP is enabled (supporting both guidesSession and fixCards)
    */
   static async validateEventForRSVP(eventId: string) {
     try {
-      const event = await sanityClient.fetch(`
+      // First try to find in guidesSession
+      let event = await sanityClient.fetch(`
         *[_type == "guidesSession" && _id == $eventId][0] {
           _id,
+          "eventType": "guidesSession",
           title,
           "eventDate": date,
           rsvpSettings {
@@ -155,6 +289,28 @@ export class SanityEventService {
           featured
         }
       `, { eventId });
+
+      // If not found in guidesSession, try fixCards
+      if (!event) {
+        event = await sanityClient.fetch(`
+          *[_type == "fixCards" && _id == $eventId][0] {
+            _id,
+            "eventType": "fixCards",
+            title,
+            "eventDate": date,
+            rsvpSettings {
+              enabled,
+              rsvpDeadline,
+              maxCapacity,
+              waitlistEnabled,
+              requiresApproval,
+              allowGuests,
+              maxGuestsPerRSVP
+            },
+            featured
+          }
+        `, { eventId });
+      }
 
       if (!event) {
         throw new Error('Event not found');

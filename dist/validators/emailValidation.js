@@ -314,39 +314,6 @@ exports.validateGuideSubmission = [
         .escape()
         .isLength({ min: 1, max: 2000 })
         .withMessage("Personal values must be between 1 and 2000 characters"),
-    // Social handles validation
-    (0, express_validator_1.body)("formData.socialHandles")
-        .isObject()
-        .withMessage("Social handles must be an object")
-        .custom((socialHandles) => {
-        const { linkedin, x, farcaster } = socialHandles;
-        // At least one social handle is required
-        if (!linkedin && !x && !farcaster) {
-            throw new Error("Please provide at least one social media handle");
-        }
-        // Validate LinkedIn URL if provided
-        if (linkedin && typeof linkedin === "string" && linkedin.trim()) {
-            const linkedinRegex = /^(https?:\/\/)?(www\.)?linkedin\.com\//;
-            if (!linkedinRegex.test(linkedin)) {
-                throw new Error("Please provide a valid LinkedIn URL");
-            }
-        }
-        // Validate X (Twitter) URL if provided
-        if (x && typeof x === "string" && x.trim()) {
-            const xRegex = /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\//;
-            if (!xRegex.test(x)) {
-                throw new Error("Please provide a valid X (Twitter) URL");
-            }
-        }
-        // Validate Farcaster URL if provided
-        if (farcaster && typeof farcaster === "string" && farcaster.trim()) {
-            const farcasterRegex = /^(https?:\/\/)?(www\.)?warpcast\.com\//;
-            if (!farcasterRegex.test(farcaster)) {
-                throw new Error("Please provide a valid Farcaster (Warpcast) URL");
-            }
-        }
-        return true;
-    }),
     (0, express_validator_1.body)("formData.howDidYouHear")
         .notEmpty()
         .withMessage("Please tell us how you heard about our DAO")
@@ -356,14 +323,6 @@ exports.validateGuideSubmission = [
         .escape()
         .isLength({ min: 1, max: 500 })
         .withMessage("Response must be between 1 and 500 characters"),
-    (0, express_validator_1.body)("formData.digitalLink")
-        .notEmpty()
-        .withMessage("Digital link is required")
-        .isString()
-        .withMessage("Digital link must be a string")
-        .trim()
-        .isURL()
-        .withMessage("Digital link must be a valid URL"),
 ];
 // Partner submission validation
 exports.validatePartnerSubmission = [

@@ -131,7 +131,6 @@ const guideSchema = new mongoose_1.Schema({
     },
     digitalLink: {
         type: String,
-        required: [true, "Digital link is required"],
         trim: true,
         validate: {
             validator: function (url) {
