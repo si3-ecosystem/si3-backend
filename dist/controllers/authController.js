@@ -693,10 +693,6 @@ exports.updateProfile = (0, catchAsync_1.default)((req, res, next) => __awaiter(
     // Special validation for username updates
     if (updateData.username) {
         const newUsername = updateData.username.trim();
-        // Validate username format
-        if (!/^[a-zA-Z0-9_-]+$/.test(newUsername)) {
-            return next(new AppError_1.default("Username can only contain letters, numbers, underscores, and hyphens", 400));
-        }
         // Validate username length
         if (newUsername.length < 3 || newUsername.length > 30) {
             return next(new AppError_1.default("Username must be between 3 and 30 characters long", 400));

@@ -102,15 +102,6 @@ const userSchema = new mongoose_1.Schema({
         // Removed lowercase: true to preserve original case
         minlength: [3, "Username must be at least 3 characters long"],
         maxlength: [30, "Username cannot exceed 30 characters"],
-        validate: {
-            validator: function (username) {
-                if (!username)
-                    return true; // Optional field
-                // Username can contain letters, numbers, underscores, and hyphens
-                return /^[a-zA-Z0-9_-]+$/.test(username);
-            },
-            message: "Username can only contain letters, numbers, underscores, and hyphens",
-        },
         sparse: true, // Allow multiple null values but enforce uniqueness for non-null values
         unique: true,
     },
