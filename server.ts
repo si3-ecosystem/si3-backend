@@ -13,7 +13,7 @@ import commentRouter from "./routes/commentRoutes";
 import rsvpRouter from "./routes/rsvpRoutes";
 import userRouter from "./routes/userRoutes";
 import webhookRouter from "./routes/webhookRoutes";
-import pinataRoutes from "./routes/pinataRoutes";
+// import pinataRoutes from "./routes/pinataRoutes";
 
 import redis from "./config/redis";
 import { checkConnection, connectDB } from "./config/db";
@@ -84,7 +84,7 @@ app.use("/api/comments", commentRouter);
 app.use("/api/rsvp", rsvpRouter);
 app.use("/api/user", userRouter);
 app.use("/api/webhooks", webhookRouter);
-app.use("/api/pinata", pinataRoutes);
+// app.use("/api/pinata", pinataRoutes);
 
 app.get("/api/system/status", (req: Request, res: Response) => {
     const memUsage = process.memoryUsage();
